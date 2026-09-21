@@ -1,24 +1,3 @@
-/*
- * Inter-Vessel Security Dashboard
- *
- * Expected event format:
- *
- * {
- *     timestamp: "2026-09-21T14:32:08",
- *     device: "VESSEL-03",
- *     ip: "192.168.1.30",
- *     severity: "CRITICAL",
- *     type: "PORT_SCAN",
- *     message: "Abnormal port scanning detected",
- *     resolved: false
- * }
- */
-
-
-/* ========================================================= */
-/* Mock data                                                   */
-/* ========================================================= */
-
 const mockData = {
 
     devices: [
@@ -87,18 +66,8 @@ const mockData = {
     ]
 };
 
-
-/* ========================================================= */
-/* Current data                                                */
-/* ========================================================= */
-
 let devices = mockData.devices;
 let logs = mockData.logs;
-
-
-/* ========================================================= */
-/* Initialization                                              */
-/* ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -109,11 +78,6 @@ document.addEventListener("DOMContentLoaded", () => {
     setupFilterListeners();
 
 });
-
-
-/* ========================================================= */
-/* Dashboard                                                   */
-/* ========================================================= */
 
 function renderDashboard() {
 
@@ -126,11 +90,6 @@ function renderDashboard() {
     renderLogs();
 
 }
-
-
-/* ========================================================= */
-/* Statistics                                                  */
-/* ========================================================= */
 
 function renderStatistics() {
 
@@ -160,11 +119,6 @@ function renderStatistics() {
     document.getElementById("critical-count").textContent = critical;
 
 }
-
-
-/* ========================================================= */
-/* Devices                                                     */
-/* ========================================================= */
 
 function renderDevices() {
 
@@ -214,11 +168,6 @@ function renderDevices() {
     });
 
 }
-
-
-/* ========================================================= */
-/* Critical incidents                                          */
-/* ========================================================= */
 
 function renderCriticalIncidents() {
 
