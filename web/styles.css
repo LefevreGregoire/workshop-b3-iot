@@ -1,0 +1,403 @@
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    background: #0b0f14;
+    color: #e6edf3;
+}
+
+
+/* ========================================================= */
+/* Header                                                      */
+/* ========================================================= */
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 20px 35px;
+
+    background: #111820;
+    border-bottom: 1px solid #26313c;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+header p {
+    margin: 5px 0 0;
+    color: #8b949e;
+}
+
+
+.system-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    font-size: 13px;
+    font-weight: bold;
+}
+
+
+/* ========================================================= */
+/* Status dots                                                 */
+/* ========================================================= */
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+
+    border-radius: 50%;
+
+    display: inline-block;
+}
+
+.status-dot.online {
+    background: #3fb950;
+}
+
+.status-dot.warning {
+    background: #d29922;
+}
+
+.status-dot.critical {
+    background: #f85149;
+}
+
+.status-dot.offline {
+    background: #6e7681;
+}
+
+
+/* ========================================================= */
+/* Main                                                        */
+/* ========================================================= */
+
+main {
+    padding: 30px 35px;
+    max-width: 1600px;
+    margin: auto;
+}
+
+section {
+    margin-bottom: 35px;
+}
+
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    margin-bottom: 15px;
+}
+
+.section-header h2 {
+    margin: 0;
+}
+
+
+/* ========================================================= */
+/* Overview                                                    */
+/* ========================================================= */
+
+.overview {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 15px;
+}
+
+.stat-card {
+    background: #111820;
+
+    border: 1px solid #26313c;
+
+    border-radius: 8px;
+
+    padding: 20px;
+}
+
+.stat-title {
+    display: block;
+
+    color: #8b949e;
+
+    font-size: 13px;
+
+    margin-bottom: 8px;
+}
+
+.stat-card strong {
+    font-size: 30px;
+}
+
+.stat-card.warning strong {
+    color: #d29922;
+}
+
+.stat-card.critical strong {
+    color: #f85149;
+}
+
+
+/* ========================================================= */
+/* Devices                                                     */
+/* ========================================================= */
+
+.devices-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fill, minmax(220px, 1fr));
+
+    gap: 15px;
+}
+
+.device-card {
+    background: #111820;
+
+    border: 1px solid #26313c;
+
+    border-radius: 8px;
+
+    padding: 20px;
+}
+
+.device-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.device-name {
+    font-weight: bold;
+    font-size: 17px;
+}
+
+.device-ip {
+    color: #8b949e;
+    font-size: 13px;
+
+    margin-top: 8px;
+}
+
+.device-status {
+    margin-top: 15px;
+
+    font-size: 13px;
+}
+
+
+/* ========================================================= */
+/* Incidents                                                   */
+/* ========================================================= */
+
+.incident-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.incident {
+    background: #1a1010;
+
+    border-left: 4px solid #f85149;
+
+    padding: 15px;
+
+    border-radius: 5px;
+}
+
+.incident-header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.incident-title {
+    font-weight: bold;
+}
+
+.incident-time {
+    color: #8b949e;
+    font-size: 12px;
+}
+
+
+/* ========================================================= */
+/* Badges                                                      */
+/* ========================================================= */
+
+.badge {
+    padding: 5px 9px;
+
+    border-radius: 4px;
+
+    font-size: 11px;
+
+    font-weight: bold;
+}
+
+.critical-badge {
+    background: #3a1515;
+    color: #ff7b72;
+}
+
+.info-badge {
+    background: #15233a;
+    color: #79c0ff;
+}
+
+.warn-badge {
+    background: #332a12;
+    color: #e3b341;
+}
+
+
+/* ========================================================= */
+/* Filters                                                     */
+/* ========================================================= */
+
+.filters {
+    display: flex;
+
+    gap: 15px;
+
+    margin-bottom: 15px;
+}
+
+.filters label {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 5px;
+
+    color: #8b949e;
+
+    font-size: 12px;
+}
+
+select {
+    background: #111820;
+
+    color: #e6edf3;
+
+    border: 1px solid #26313c;
+
+    border-radius: 5px;
+
+    padding: 8px 12px;
+}
+
+
+/* ========================================================= */
+/* Logs                                                        */
+/* ========================================================= */
+
+.table-container {
+    overflow-x: auto;
+
+    background: #111820;
+
+    border: 1px solid #26313c;
+
+    border-radius: 8px;
+}
+
+table {
+    width: 100%;
+
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 12px 15px;
+
+    text-align: left;
+
+    border-bottom: 1px solid #26313c;
+}
+
+th {
+    color: #8b949e;
+
+    font-size: 12px;
+
+    text-transform: uppercase;
+}
+
+td {
+    font-size: 13px;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+
+/* ========================================================= */
+/* Footer                                                      */
+/* ========================================================= */
+
+footer {
+    text-align: center;
+
+    padding: 25px;
+
+    color: #6e7681;
+
+    font-size: 12px;
+}
+
+
+/* ========================================================= */
+/* Responsive                                                  */
+/* ========================================================= */
+
+@media (max-width: 800px) {
+
+    header {
+        flex-direction: column;
+
+        align-items: flex-start;
+
+        gap: 15px;
+    }
+
+    .overview {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    .filters {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 500px) {
+
+    .overview {
+        grid-template-columns: 1fr;
+    }
+
+    main {
+        padding: 20px;
+    }
+}

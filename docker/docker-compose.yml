@@ -1,0 +1,16 @@
+services:
+
+  ids:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile
+
+    container_name: inter-vessel-ids
+
+    restart: unless-stopped
+
+    volumes:
+      - ../py:/app/py
+
+    environment:
+      - PYTHONUNBUFFERED=1
