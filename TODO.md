@@ -1,8 +1,7 @@
 # Scripting
 
     [ ] Classify and sort all kind of alerts based on risks and dangerosity for logs, from LOG, to WARN or CRITICAL.
-    [ ] First reponse available, cease all communications with a machine with a CRITICAL error until end of Error.
-    [ ] Admin dashboard to access network infrastructure, display logs, sort and display mostly unresolved CRITICAL Errors.
+    [ ] First reponse available, cease all communications with a device with a CRITICAL error until end of Error.
     [ ] Cypher and allow a decypher of all data/ping send from device X to Center Device.
     [ ] Check device status at all time and if problems were pushed.
 
