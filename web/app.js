@@ -1,414 +1,91 @@
-const mockData = {
+/* ========================================================= */
+/* INTER-VESSEL SECURITY CENTER                               */
+/* ========================================================= */
 
-    devices: [
-        {
-            id: "VESSEL-01",
-            ip: "192.168.1.10",
-            status: "ONLINE"
-        },
-        {
-            id: "VESSEL-02",
-            ip: "192.168.1.20",
-            status: "ONLINE"
-        },
-        {
-            id: "VESSEL-03",
-            ip: "192.168.1.30",
-            status: "ISOLATED"
-        },
-        {
-            id: "VESSEL-04",
-            ip: "192.168.1.40",
-            status: "WARNING"
-        }
-    ],
-
-    logs: [
-        {
-            timestamp: "2026-09-21T14:32:08",
-            device: "VESSEL-03",
-            ip: "192.168.1.30",
-            severity: "CRITICAL",
-            type: "PORT_SCAN",
-            message: "Abnormal port scanning detected",
-            resolved: false
-        },
-
-        {
-            timestamp: "2026-09-21T14:31:51",
-            device: "VESSEL-04",
-            ip: "192.168.1.40",
-            severity: "WARN",
-            type: "HIGH_TRAFFIC",
-            message: "Abnormally high network traffic",
-            resolved: false
-        },
-
-        {
-            timestamp: "2026-09-21T14:31:40",
-            device: "VESSEL-01",
-            ip: "192.168.1.10",
-            severity: "INFO",
-            type: "HEARTBEAT",
-            message: "Heartbeat received",
-            resolved: true
-        },
-
-        {
-            timestamp: "2026-09-21T14:30:15",
-            device: "VESSEL-02",
-            ip: "192.168.1.20",
-            severity: "INFO",
-            type: "CONNECTION",
-            message: "Connection established",
-            resolved: true
-        }
-    ]
-};
-
-let devices = mockData.devices;
-let logs = mockData.logs;
-
-document.addEventListener("DOMContentLoaded", () => {
-
-    initializeFilters();
-
-    renderDashboard();
-
-    setupFilterListeners();
-
-});
-
-function renderDashboard() {
-
-    renderStatistics();
-
-    renderDevices();
-
-    renderCriticalIncidents();
-
-    renderLogs();
-
-}
-
-function renderStatistics() {
-
-    const total = devices.length;
-
-    const online = devices.filter(
-        device => device.status === "ONLINE"
-    ).length;
-
-    const warnings = devices.filter(
-        device => device.status === "WARNING"
-    ).length;
-
-    const critical = logs.filter(
-        log =>
-            log.severity === "CRITICAL" &&
-            !log.resolved
-    ).length;
+/*
+ * Flask API expected:
+ *
+ * GET  /api/devices
+ * GET  /api/logs
+ *
+ *
+ * Device format:
+ *
+ * {
+ *     "id": "VESSEL-01",
+ *     "ip": "192.168.1.10",
+ *     "status": "ONLINE",
+ *     "last_seen": "2026-09-21T14:32:08"
+ * }
+ *
+ *
+ * Log format:
+ *
+ * {
+ *     "timestamp": "2026-09-21T14:32:08",
+ *     "device": "VESSEL-01",
+ *     "severity": "CRITICAL",
+ *     "type": "PORT_SCAN",
+ *     "message": "Abnormal port scanning detected",
+ *     "resolved": false
+ * }
+ */
 
 
-    document.getElementById("device-count").textContent = total;
+/* ========================================================= */
+/* DATA                                                        */
+/* ========================================================= */
 
-    document.getElementById("online-count").textContent = online;
+let devices = [];
 
-    document.getElementById("warning-count").textContent = warnings;
-
-    document.getElementById("critical-count").textContent = critical;
-
-}
-
-function renderDevices() {
-
-    const container =
-        document.getElementById("devices-container");
-
-    container.innerHTML = "";
+let logs = [];
 
 
-    devices.forEach(device => {
+/* ========================================================= */
+/* CONFIGURATION                                               */
+/* ========================================================= */
 
-        const card = document.createElement("div");
-
-        card.className = "device-card";
-
-
-        const statusClass =
-            getStatusClass(device.status);
+const REFRESH_INTERVAL = 2000;
 
 
-        card.innerHTML = `
+/* ========================================================= */
+/* INITIALIZATION                                              */
+/* ========================================================= */
 
-            <div class="device-header">
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
 
-                <span class="device-name">
-                    ${escapeHTML(device.id)}
-                </span>
+        setupEventListeners();
 
-                <span class="status-dot ${statusClass}">
-                </span>
+        loadDashboard();
 
-            </div>
+        setInterval(
+            loadDashboard,
+            REFRESH_INTERVAL
+        );
 
-            <div class="device-ip">
-                ${escapeHTML(device.ip)}
-            </div>
-
-            <div class="device-status">
-                ${escapeHTML(device.status)}
-            </div>
-
-        `;
+    }
+);
 
 
-        container.appendChild(card);
+/* ========================================================= */
+/* EVENT LISTENERS                                             */
+/* ========================================================= */
 
-    });
+function setupEventListeners() {
 
-}
-
-function renderCriticalIncidents() {
-
-    const container =
-        document.getElementById("critical-container");
-
-    const criticalLogs =
-        logs.filter(
-            log =>
-                log.severity === "CRITICAL" &&
-                !log.resolved
+    const refreshButton =
+        document.getElementById(
+            "refresh-button"
         );
 
 
-    container.innerHTML = "";
+    refreshButton.addEventListener(
+        "click",
+        loadDashboard
+    );
 
-
-    document.getElementById(
-        "critical-indicator"
-    ).textContent =
-        `${criticalLogs.length} unresolved`;
-
-
-    if (criticalLogs.length === 0) {
-
-        container.innerHTML = `
-            <div class="incident">
-                No unresolved critical incidents.
-            </div>
-        `;
-
-        return;
-    }
-
-
-    criticalLogs.forEach(log => {
-
-        const incident =
-            document.createElement("div");
-
-        incident.className = "incident";
-
-
-        incident.innerHTML = `
-
-            <div class="incident-header">
-
-                <span class="incident-title">
-                    ${escapeHTML(log.device)}
-                    — ${escapeHTML(log.type)}
-                </span>
-
-                <span class="incident-time">
-                    ${formatTimestamp(log.timestamp)}
-                </span>
-
-            </div>
-
-            <p>
-                ${escapeHTML(log.message)}
-            </p>
-
-        `;
-
-
-        container.appendChild(incident);
-
-    });
-
-}
-
-
-/* ========================================================= */
-/* Logs                                                        */
-/* ========================================================= */
-
-function renderLogs() {
-
-    const container =
-        document.getElementById("logs-container");
-
-
-    const severity =
-        document.getElementById(
-            "severity-filter"
-        ).value;
-
-    const device =
-        document.getElementById(
-            "device-filter"
-        ).value;
-
-    const type =
-        document.getElementById(
-            "type-filter"
-        ).value;
-
-
-    let filteredLogs = [...logs];
-
-
-    if (severity !== "ALL") {
-
-        filteredLogs =
-            filteredLogs.filter(
-                log =>
-                    log.severity === severity
-            );
-
-    }
-
-
-    if (device !== "ALL") {
-
-        filteredLogs =
-            filteredLogs.filter(
-                log =>
-                    log.device === device
-            );
-
-    }
-
-
-    if (type !== "ALL") {
-
-        filteredLogs =
-            filteredLogs.filter(
-                log =>
-                    log.type === type
-            );
-
-    }
-
-
-    container.innerHTML = "";
-
-
-    filteredLogs.forEach(log => {
-
-        const row =
-            document.createElement("tr");
-
-
-        row.innerHTML = `
-
-            <td>
-                ${formatTimestamp(log.timestamp)}
-            </td>
-
-            <td>
-                ${escapeHTML(log.device)}
-            </td>
-
-            <td>
-                <span class="badge ${getSeverityClass(log.severity)}">
-                    ${escapeHTML(log.severity)}
-                </span>
-            </td>
-
-            <td>
-                ${escapeHTML(log.type)}
-            </td>
-
-            <td>
-                ${escapeHTML(log.message)}
-            </td>
-
-            <td>
-                ${log.resolved ? "RESOLVED" : "ACTIVE"}
-            </td>
-
-        `;
-
-
-        container.appendChild(row);
-
-    });
-
-}
-
-
-/* ========================================================= */
-/* Filters                                                     */
-/* ========================================================= */
-
-function initializeFilters() {
-
-    const deviceFilter =
-        document.getElementById(
-            "device-filter"
-        );
-
-    const typeFilter =
-        document.getElementById(
-            "type-filter"
-        );
-
-
-    const deviceNames =
-        [...new Set(
-            logs.map(log => log.device)
-        )];
-
-
-    const types =
-        [...new Set(
-            logs.map(log => log.type)
-        )];
-
-
-    deviceNames.forEach(device => {
-
-        const option =
-            document.createElement("option");
-
-        option.value = device;
-
-        option.textContent = device;
-
-        deviceFilter.appendChild(option);
-
-    });
-
-
-    types.forEach(type => {
-
-        const option =
-            document.createElement("option");
-
-        option.value = type;
-
-        option.textContent = type;
-
-        typeFilter.appendChild(option);
-
-    });
-
-}
-
-
-function setupFilterListeners() {
 
     document
         .getElementById("severity-filter")
@@ -437,21 +114,781 @@ function setupFilterListeners() {
 
 
 /* ========================================================= */
-/* Helpers                                                     */
+/* LOAD DASHBOARD                                              */
+/* ========================================================= */
+
+async function loadDashboard() {
+
+    setLoadingState(true);
+
+
+    try {
+
+        const [
+            devicesResponse,
+            logsResponse
+        ] = await Promise.all([
+
+            fetch("/api/devices"),
+
+            fetch("/api/logs")
+
+        ]);
+
+
+        if (
+            !devicesResponse.ok ||
+            !logsResponse.ok
+        ) {
+
+            throw new Error(
+                "Unable to retrieve data from Flask."
+            );
+
+        }
+
+
+        devices =
+            await devicesResponse.json();
+
+
+        logs =
+            await logsResponse.json();
+
+
+        renderDashboard();
+
+        setServerStatus(true);
+
+
+    } catch (error) {
+
+        console.error(
+            "Dashboard error:",
+            error
+        );
+
+
+        setServerStatus(false);
+
+    } finally {
+
+        setLoadingState(false);
+
+    }
+
+}
+
+
+/* ========================================================= */
+/* RENDER DASHBOARD                                            */
+/* ========================================================= */
+
+function renderDashboard() {
+
+    renderStatistics();
+
+    renderDevices();
+
+    renderCriticalIncidents();
+
+    updateFilters();
+
+    renderLogs();
+
+}
+
+
+/* ========================================================= */
+/* STATISTICS                                                  */
+/* ========================================================= */
+
+function renderStatistics() {
+
+    const total =
+        devices.length;
+
+
+    const online =
+        devices.filter(
+            device =>
+                device.status === "ONLINE"
+        ).length;
+
+
+    const warnings =
+        devices.filter(
+            device =>
+                device.status === "WARNING"
+        ).length;
+
+
+    const critical =
+        logs.filter(
+            log =>
+                log.severity === "CRITICAL" &&
+                !log.resolved
+        ).length;
+
+
+    document.getElementById(
+        "device-count"
+    ).textContent = total;
+
+
+    document.getElementById(
+        "online-count"
+    ).textContent = online;
+
+
+    document.getElementById(
+        "warning-count"
+    ).textContent = warnings;
+
+
+    document.getElementById(
+        "critical-count"
+    ).textContent = critical;
+
+
+    document.getElementById(
+        "sidebar-critical"
+    ).textContent = critical;
+
+}
+
+
+/* ========================================================= */
+/* DEVICES                                                     */
+/* ========================================================= */
+
+function renderDevices() {
+
+    const container =
+        document.getElementById(
+            "devices-container"
+        );
+
+
+    container.innerHTML = "";
+
+
+    if (devices.length === 0) {
+
+        container.innerHTML = `
+
+            <tr>
+
+                <td
+                    colspan="4"
+                    class="empty-state"
+                >
+
+                    No vessels registered.
+
+                </td>
+
+            </tr>
+
+        `;
+
+        return;
+
+    }
+
+
+    devices.forEach(
+        device => {
+
+            const row =
+                document.createElement("tr");
+
+
+            const statusClass =
+                getStatusClass(
+                    device.status
+                );
+
+
+            const lastSeen =
+                device.last_seen
+                    ? formatTimestamp(
+                        device.last_seen
+                    )
+                    : "—";
+
+
+            row.innerHTML = `
+
+                <td>
+
+                    <strong>
+                        ${escapeHTML(device.id)}
+                    </strong>
+
+                </td>
+
+
+                <td>
+
+                    ${escapeHTML(
+                        device.ip || "Unknown"
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    <span class="status-cell">
+
+                        <span
+                            class="status-dot ${statusClass}"
+                        ></span>
+
+                        ${escapeHTML(
+                            device.status || "UNKNOWN"
+                        )}
+
+                    </span>
+
+                </td>
+
+
+                <td>
+
+                    ${escapeHTML(lastSeen)}
+
+                </td>
+
+            `;
+
+
+            container.appendChild(row);
+
+        }
+    );
+
+}
+
+
+/* ========================================================= */
+/* CRITICAL INCIDENTS                                          */
+/* ========================================================= */
+
+function renderCriticalIncidents() {
+
+    const container =
+        document.getElementById(
+            "critical-container"
+        );
+
+
+    const criticalLogs =
+        logs.filter(
+            log =>
+                log.severity === "CRITICAL" &&
+                !log.resolved
+        );
+
+
+    container.innerHTML = "";
+
+
+    document.getElementById(
+        "critical-indicator"
+    ).textContent =
+        `${criticalLogs.length} unresolved`;
+
+
+    if (
+        criticalLogs.length === 0
+    ) {
+
+        container.innerHTML = `
+
+            <div class="empty-state">
+
+                ✓ No unresolved critical incidents.
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    criticalLogs
+        .sort(
+            (a, b) =>
+                new Date(b.timestamp) -
+                new Date(a.timestamp)
+        )
+        .forEach(
+            log => {
+
+                const incident =
+                    document.createElement("div");
+
+
+                incident.className =
+                    "incident";
+
+
+                incident.innerHTML = `
+
+                    <div class="incident-header">
+
+                        <span class="incident-title">
+
+                            ${escapeHTML(
+                                log.device
+                            )}
+
+                            —
+
+                            ${escapeHTML(
+                                log.type
+                            )}
+
+                        </span>
+
+
+                        <span class="incident-time">
+
+                            ${formatTimestamp(
+                                log.timestamp
+                            )}
+
+                        </span>
+
+                    </div>
+
+
+                    <p>
+
+                        ${escapeHTML(
+                            log.message
+                        )}
+
+                    </p>
+
+                `;
+
+
+                container.appendChild(
+                    incident
+                );
+
+            }
+        );
+
+}
+
+
+/* ========================================================= */
+/* FILTERS                                                     */
+/* ========================================================= */
+
+function updateFilters() {
+
+    updateDeviceFilter();
+
+    updateTypeFilter();
+
+}
+
+
+function updateDeviceFilter() {
+
+    const select =
+        document.getElementById(
+            "device-filter"
+        );
+
+
+    const currentValue =
+        select.value;
+
+
+    const deviceNames =
+        [
+            ...new Set(
+                logs
+                    .map(log => log.device)
+                    .filter(Boolean)
+            )
+        ].sort();
+
+
+    select.innerHTML = `
+
+        <option value="ALL">
+            All devices
+        </option>
+
+    `;
+
+
+    deviceNames.forEach(
+        device => {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value =
+                device;
+
+
+            option.textContent =
+                device;
+
+
+            select.appendChild(
+                option
+            );
+
+        }
+    );
+
+
+    if (
+        deviceNames.includes(
+            currentValue
+        )
+    ) {
+
+        select.value =
+            currentValue;
+
+    } else {
+
+        select.value =
+            "ALL";
+
+    }
+
+}
+
+
+function updateTypeFilter() {
+
+    const select =
+        document.getElementById(
+            "type-filter"
+        );
+
+
+    const currentValue =
+        select.value;
+
+
+    const types =
+        [
+            ...new Set(
+                logs
+                    .map(log => log.type)
+                    .filter(Boolean)
+            )
+        ].sort();
+
+
+    select.innerHTML = `
+
+        <option value="ALL">
+            All types
+        </option>
+
+    `;
+
+
+    types.forEach(
+        type => {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value =
+                type;
+
+
+            option.textContent =
+                type;
+
+
+            select.appendChild(
+                option
+            );
+
+        }
+    );
+
+
+    if (
+        types.includes(
+            currentValue
+        )
+    ) {
+
+        select.value =
+            currentValue;
+
+    } else {
+
+        select.value =
+            "ALL";
+
+    }
+
+}
+
+
+/* ========================================================= */
+/* LOGS                                                        */
+/* ========================================================= */
+
+function renderLogs() {
+
+    const container =
+        document.getElementById(
+            "logs-container"
+        );
+
+
+    const severity =
+        document.getElementById(
+            "severity-filter"
+        ).value;
+
+
+    const device =
+        document.getElementById(
+            "device-filter"
+        ).value;
+
+
+    const type =
+        document.getElementById(
+            "type-filter"
+        ).value;
+
+
+    let filteredLogs =
+        [...logs];
+
+
+    if (
+        severity !== "ALL"
+    ) {
+
+        filteredLogs =
+            filteredLogs.filter(
+                log =>
+                    log.severity ===
+                    severity
+            );
+
+    }
+
+
+    if (
+        device !== "ALL"
+    ) {
+
+        filteredLogs =
+            filteredLogs.filter(
+                log =>
+                    log.device ===
+                    device
+            );
+
+    }
+
+
+    if (
+        type !== "ALL"
+    ) {
+
+        filteredLogs =
+            filteredLogs.filter(
+                log =>
+                    log.type ===
+                    type
+            );
+
+    }
+
+
+    filteredLogs.sort(
+        (a, b) =>
+            new Date(b.timestamp) -
+            new Date(a.timestamp)
+    );
+
+
+    container.innerHTML = "";
+
+
+    if (
+        filteredLogs.length === 0
+    ) {
+
+        container.innerHTML = `
+
+            <tr>
+
+                <td
+                    colspan="6"
+                    class="empty-state"
+                >
+
+                    No logs matching the selected filters.
+
+                </td>
+
+            </tr>
+
+        `;
+
+        return;
+
+    }
+
+
+    filteredLogs.forEach(
+        log => {
+
+            const row =
+                document.createElement("tr");
+
+
+            const severityClass =
+                getSeverityClass(
+                    log.severity
+                );
+
+
+            const status =
+                log.resolved
+                    ? "RESOLVED"
+                    : "ACTIVE";
+
+
+            row.innerHTML = `
+
+                <td>
+
+                    ${formatTimestamp(
+                        log.timestamp
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    <strong>
+                        ${escapeHTML(
+                            log.device
+                        )}
+                    </strong>
+
+                </td>
+
+
+                <td>
+
+                    <span
+                        class="badge ${severityClass}"
+                    >
+
+                        ${escapeHTML(
+                            log.severity
+                        )}
+
+                    </span>
+
+                </td>
+
+
+                <td>
+
+                    ${escapeHTML(
+                        log.type
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    ${escapeHTML(
+                        log.message
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    <span
+                        class="badge ${
+                            log.resolved
+                                ? "badge-success"
+                                : "badge-warning"
+                        }"
+                    >
+
+                        ${status}
+
+                    </span>
+
+                </td>
+
+            `;
+
+
+            container.appendChild(
+                row
+            );
+
+        }
+    );
+
+}
+
+
+/* ========================================================= */
+/* STATUS HELPERS                                              */
 /* ========================================================= */
 
 function getStatusClass(status) {
 
-    switch (status) {
+    switch (
+        String(status).toUpperCase()
+    ) {
 
         case "ONLINE":
             return "online";
 
+
         case "WARNING":
+        case "WARN":
             return "warning";
 
+
         case "ISOLATED":
+        case "CRITICAL":
             return "critical";
+
 
         default:
             return "offline";
@@ -463,43 +900,224 @@ function getStatusClass(status) {
 
 function getSeverityClass(severity) {
 
-    switch (severity) {
+    switch (
+        String(severity).toUpperCase()
+    ) {
 
         case "CRITICAL":
-            return "critical-badge";
+            return "badge-danger";
+
 
         case "WARN":
-            return "warn-badge";
+        case "WARNING":
+            return "badge-warning";
+
+
+        case "INFO":
+            return "badge-info";
+
 
         default:
-            return "info-badge";
+            return "badge-info";
 
     }
 
 }
 
 
+/* ========================================================= */
+/* DATE                                                        */
+/* ========================================================= */
+
 function formatTimestamp(timestamp) {
+
+    if (!timestamp) {
+
+        return "—";
+
+    }
+
 
     const date =
         new Date(timestamp);
 
-    return date.toLocaleString();
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+
+        return timestamp;
+
+    }
+
+
+    return date.toLocaleString(
+        undefined,
+        {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+        }
+    );
 
 }
 
 
+/* ========================================================= */
+/* SERVER CONNECTION STATUS                                    */
+/* ========================================================= */
+
+function setServerStatus(connected) {
+
+    const dot =
+        document.getElementById(
+            "server-status-dot"
+        );
+
+
+    const text =
+        document.getElementById(
+            "server-status-text"
+        );
+
+
+    const connectionDot =
+        document.getElementById(
+            "connection-dot"
+        );
+
+
+    const connectionText =
+        document.getElementById(
+            "connection-text"
+        );
+
+
+    if (connected) {
+
+        dot.className =
+            "status-dot online";
+
+
+        text.textContent =
+            "System Online";
+
+
+        connectionDot.className =
+            "status-dot online";
+
+
+        connectionText.textContent =
+            "Connected";
+
+    } else {
+
+        dot.className =
+            "status-dot critical";
+
+
+        text.textContent =
+            "Server Offline";
+
+
+        connectionDot.className =
+            "status-dot critical";
+
+
+        connectionText.textContent =
+            "Connection failed";
+
+    }
+
+}
+
+
+/* ========================================================= */
+/* LOADING STATE                                               */
+/* ========================================================= */
+
+function setLoadingState(loading) {
+
+    const button =
+        document.getElementById(
+            "refresh-button"
+        );
+
+
+    if (loading) {
+
+        button.classList.add(
+            "loading"
+        );
+
+
+        button.disabled =
+            true;
+
+
+        button.innerHTML = `
+            <span>↻</span>
+            Refreshing...
+        `;
+
+    } else {
+
+        button.classList.remove(
+            "loading"
+        );
+
+
+        button.disabled =
+            false;
+
+
+        button.innerHTML = `
+            <span>↻</span>
+            Refresh
+        `;
+
+    }
+
+}
+
+
+/* ========================================================= */
+/* SECURITY                                                     */
+/* ========================================================= */
+
 /*
- * Prevent HTML injection when displaying
- * external device/log data.
+ * Device and log data comes from the network.
+ *
+ * Never insert external values directly into innerHTML
+ * without escaping them first.
  */
 
 function escapeHTML(value) {
 
-    const div =
-        document.createElement("div");
+    if (
+        value === null ||
+        value === undefined
+    ) {
 
-    div.textContent = value;
+        return "";
+
+    }
+
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+
+    div.textContent =
+        String(value);
+
 
     return div.innerHTML;
 

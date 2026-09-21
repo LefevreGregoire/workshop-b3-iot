@@ -3,175 +3,722 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Inter-Vessel Security Center"
+    >
 
     <title>Inter-Vessel Security Center</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link
+        rel="stylesheet"
+        href="./styles.css"
+    >
 </head>
+
 
 <body>
 
-<header>
-    <div>
-        <h1>Inter-Vessel Security Center</h1>
-        <p>Autonomous Intrusion Detection & Response</p>
+<!-- ========================================================= -->
+<!-- TOP BAR                                                    -->
+<!-- ========================================================= -->
+
+<header class="topbar">
+
+    <div class="brand">
+
+        <div class="brand-icon">
+            🚀
+        </div>
+
+        <div class="brand-text">
+
+            <div class="brand-title">
+                INTER-VESSEL
+            </div>
+
+            <div class="brand-subtitle">
+                Security Center
+            </div>
+
+        </div>
+
     </div>
 
-    <div class="system-status">
-        <span class="status-dot online"></span>
-        SYSTEM ONLINE
+
+    <div class="topbar-right">
+
+        <div class="server-status">
+
+            <span
+                id="server-status-dot"
+                class="status-dot online"
+            ></span>
+
+            <span id="server-status-text">
+                System Online
+            </span>
+
+        </div>
+
+
+        <div class="admin">
+
+            Administrator
+
+        </div>
+
     </div>
+
 </header>
 
 
-<main>
+<!-- ========================================================= -->
+<!-- APPLICATION                                                -->
+<!-- ========================================================= -->
 
-    <!-- ========================================================= -->
-    <!-- Overview                                                  -->
-    <!-- ========================================================= -->
+<div class="application">
 
-    <section class="overview">
 
-        <div class="stat-card">
-            <span class="stat-title">Devices</span>
-            <strong id="device-count">0</strong>
+    <!-- ===================================================== -->
+    <!-- SIDEBAR                                                -->
+    <!-- ===================================================== -->
+
+    <aside class="sidebar">
+
+
+        <!-- Main -->
+
+        <div class="sidebar-section">
+
+            <div class="sidebar-title">
+                Main
+            </div>
+
+
+            <a
+                href="#dashboard"
+                class="nav-item active"
+            >
+
+                <span class="nav-icon">
+                    ▣
+                </span>
+
+                <span class="nav-label">
+                    Dashboard
+                </span>
+
+            </a>
+
+
+            <a
+                href="#vessels"
+                class="nav-item"
+            >
+
+                <span class="nav-icon">
+                    ◉
+                </span>
+
+                <span class="nav-label">
+                    Vessels
+                </span>
+
+            </a>
+
         </div>
 
-        <div class="stat-card">
-            <span class="stat-title">Online</span>
-            <strong id="online-count">0</strong>
+
+        <!-- Security -->
+
+        <div class="sidebar-section">
+
+            <div class="sidebar-title">
+                Security
+            </div>
+
+
+            <a
+                href="#alerts"
+                class="nav-item"
+            >
+
+                <span class="nav-icon">
+                    !
+                </span>
+
+                <span class="nav-label">
+                    Alerts
+                </span>
+
+                <span
+                    id="sidebar-critical"
+                    class="nav-badge"
+                >
+                    0
+                </span>
+
+            </a>
+
+
+            <a
+                href="#logs"
+                class="nav-item"
+            >
+
+                <span class="nav-icon">
+                    ≡
+                </span>
+
+                <span class="nav-label">
+                    Logs
+                </span>
+
+            </a>
+
+
+            <a
+                href="#events"
+                class="nav-item"
+            >
+
+                <span class="nav-icon">
+                    ◈
+                </span>
+
+                <span class="nav-label">
+                    Events
+                </span>
+
+            </a>
+
         </div>
 
-        <div class="stat-card warning">
-            <span class="stat-title">Warnings</span>
-            <strong id="warning-count">0</strong>
+
+        <!-- System -->
+
+        <div class="sidebar-section">
+
+            <div class="sidebar-title">
+                System
+            </div>
+
+
+            <a
+                href="#status"
+                class="nav-item"
+            >
+
+                <span class="nav-icon">
+                    ◌
+                </span>
+
+                <span class="nav-label">
+                    Status
+                </span>
+
+            </a>
+
+
+            <a
+                href="#settings"
+                class="nav-item"
+            >
+
+                <span class="nav-icon">
+                    ⚙
+                </span>
+
+                <span class="nav-label">
+                    Settings
+                </span>
+
+            </a>
+
         </div>
 
-        <div class="stat-card critical">
-            <span class="stat-title">Critical</span>
-            <strong id="critical-count">0</strong>
+
+        <!-- Sidebar footer -->
+
+        <div class="sidebar-footer">
+
+            <div class="connection-indicator">
+
+                <span
+                    id="connection-dot"
+                    class="status-dot online"
+                ></span>
+
+
+                <div>
+
+                    <strong>
+                        Center Server
+                    </strong>
+
+                    <small id="connection-text">
+                        Connected
+                    </small>
+
+                </div>
+
+            </div>
+
         </div>
 
-    </section>
+    </aside>
 
 
-    <!-- ========================================================= -->
-    <!-- Devices                                                   -->
-    <!-- ========================================================= -->
+    <!-- ===================================================== -->
+    <!-- MAIN CONTENT                                           -->
+    <!-- ===================================================== -->
 
-    <section>
-
-        <div class="section-header">
-            <h2>Vessels</h2>
-        </div>
-
-        <div id="devices-container" class="devices-grid">
-            <!-- Devices generated by JavaScript -->
-        </div>
-
-    </section>
+    <main class="content">
 
 
-    <!-- ========================================================= -->
-    <!-- Critical incidents                                        -->
-    <!-- ========================================================= -->
+        <!-- Breadcrumb -->
 
-    <section>
+        <div class="breadcrumb">
 
-        <div class="section-header">
-            <h2>Critical Incidents</h2>
-
-            <span id="critical-indicator" class="badge critical-badge">
-                0 unresolved
+            <span>
+                Home
             </span>
-        </div>
 
-        <div id="critical-container" class="incident-list">
-            <!-- Critical incidents generated by JavaScript -->
-        </div>
+            <span>
+                /
+            </span>
 
-    </section>
-
-
-    <!-- ========================================================= -->
-    <!-- Logs                                                       -->
-    <!-- ========================================================= -->
-
-    <section>
-
-        <div class="section-header">
-            <h2>Logs</h2>
-        </div>
-
-        <div class="filters">
-
-            <label>
-                Severity
-
-                <select id="severity-filter">
-                    <option value="ALL">All</option>
-                    <option value="INFO">INFO</option>
-                    <option value="WARN">WARN</option>
-                    <option value="CRITICAL">CRITICAL</option>
-                </select>
-            </label>
-
-
-            <label>
-                Device
-
-                <select id="device-filter">
-                    <option value="ALL">All devices</option>
-                </select>
-            </label>
-
-
-            <label>
-                Type
-
-                <select id="type-filter">
-                    <option value="ALL">All types</option>
-                </select>
-            </label>
+            <strong>
+                Dashboard
+            </strong>
 
         </div>
 
 
-        <div class="table-container">
+        <!-- Page header -->
 
-            <table>
+        <div class="page-header">
 
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>Device</th>
-                        <th>Severity</th>
-                        <th>Type</th>
-                        <th>Message</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
+            <div>
 
-                <tbody id="logs-container">
-                    <!-- Logs generated by JavaScript -->
-                </tbody>
+                <h1>
+                    Dashboard
+                </h1>
 
-            </table>
+                <p>
+                    Overview of the inter-vessel infrastructure.
+                </p>
+
+            </div>
+
+
+            <button
+                id="refresh-button"
+                class="refresh-button"
+                type="button"
+            >
+
+                <span>
+                    ↻
+                </span>
+
+                Refresh
+
+            </button>
 
         </div>
 
-    </section>
 
-</main>
+        <!-- ================================================= -->
+        <!-- STATISTICS                                        -->
+        <!-- ================================================= -->
 
-
-<footer>
-    Inter-Vessel Security Infrastructure — MVP
-</footer>
+        <section class="stats-grid">
 
 
-<script src="app.js"></script>
+            <div class="stat-panel">
+
+                <div class="stat-icon blue">
+                    ◉
+                </div>
+
+
+                <div class="stat-content">
+
+                    <span>
+                        Devices
+                    </span>
+
+                    <strong id="device-count">
+                        0
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <div class="stat-panel">
+
+                <div class="stat-icon green">
+                    ✓
+                </div>
+
+
+                <div class="stat-content">
+
+                    <span>
+                        Online
+                    </span>
+
+                    <strong id="online-count">
+                        0
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <div class="stat-panel">
+
+                <div class="stat-icon orange">
+                    !
+                </div>
+
+
+                <div class="stat-content">
+
+                    <span>
+                        Warnings
+                    </span>
+
+                    <strong id="warning-count">
+                        0
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <div class="stat-panel">
+
+                <div class="stat-icon red">
+                    !
+                </div>
+
+
+                <div class="stat-content">
+
+                    <span>
+                        Critical
+                    </span>
+
+                    <strong id="critical-count">
+                        0
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- CRITICAL INCIDENTS                               -->
+        <!-- ================================================= -->
+
+        <section
+            id="alerts"
+            class="panel"
+        >
+
+            <div class="panel-header">
+
+                <div>
+
+                    <h2>
+                        Critical incidents
+                    </h2>
+
+                    <p>
+                        Unresolved security incidents requiring attention.
+                    </p>
+
+                </div>
+
+
+                <span
+                    id="critical-indicator"
+                    class="badge badge-danger"
+                >
+                    0 unresolved
+                </span>
+
+            </div>
+
+
+            <div
+                id="critical-container"
+                class="incident-container"
+            >
+
+                <div class="empty-state">
+                    Loading incidents...
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- VESSELS                                           -->
+        <!-- ================================================= -->
+
+        <section
+            id="vessels"
+            class="panel"
+        >
+
+            <div class="panel-header">
+
+                <div>
+
+                    <h2>
+                        Vessels
+                    </h2>
+
+                    <p>
+                        Current status of connected devices.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Device
+                            </th>
+
+                            <th>
+                                IP Address
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                            <th>
+                                Last Seen
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody id="devices-container">
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- LOGS                                               -->
+        <!-- ================================================= -->
+
+        <section
+            id="logs"
+            class="panel"
+        >
+
+            <div class="panel-header">
+
+                <div>
+
+                    <h2>
+                        System logs
+                    </h2>
+
+                    <p>
+                        Security and infrastructure events.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- Filters -->
+
+            <div class="filters">
+
+
+                <div class="filter">
+
+                    <label
+                        for="severity-filter"
+                    >
+                        Severity
+                    </label>
+
+
+                    <select
+                        id="severity-filter"
+                    >
+
+                        <option value="ALL">
+                            All
+                        </option>
+
+                        <option value="INFO">
+                            INFO
+                        </option>
+
+                        <option value="WARN">
+                            WARN
+                        </option>
+
+                        <option value="CRITICAL">
+                            CRITICAL
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="filter">
+
+                    <label
+                        for="device-filter"
+                    >
+                        Device
+                    </label>
+
+
+                    <select
+                        id="device-filter"
+                    >
+
+                        <option value="ALL">
+                            All devices
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="filter">
+
+                    <label
+                        for="type-filter"
+                    >
+                        Type
+                    </label>
+
+
+                    <select
+                        id="type-filter"
+                    >
+
+                        <option value="ALL">
+                            All types
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+
+            <!-- Logs table -->
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Timestamp
+                            </th>
+
+                            <th>
+                                Device
+                            </th>
+
+                            <th>
+                                Severity
+                            </th>
+
+                            <th>
+                                Type
+                            </th>
+
+                            <th>
+                                Message
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody id="logs-container">
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+    </main>
+
+</div>
+
+
+<!-- ========================================================= -->
+<!-- JAVASCRIPT                                                 -->
+<!-- ========================================================= -->
+
+<script src="/app.js"></script>
 
 </body>
+
 </html>
