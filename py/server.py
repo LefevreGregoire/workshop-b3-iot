@@ -1,68 +1,962 @@
 from flask import Flask, jsonify, request, send_from_directory
 from datetime import datetime
-import os
 from pathlib import Path
+import os
+import json
+import threading
+
+import paho.mqtt.client as mqtt
+
+# ============================================================
+# IMPORT IDS
+# ============================================================
+
+from ids import AutomaticIDS
+
+
+# ============================================================
+# IMPORT ISOLATION
+# ============================================================
+#
+# Adapte UNIQUEMENT cet import si isolation.py n'est pas dans
+# le même dossier que server.py.
+#
+# Exemple actuel :
+#
+# py/
+# ├── server.py
+# ├── ids.py
+# └── isolation.py
+#
+# ============================================================
 
 try:
-    from .isolation import handle_alert, is_isolated, restore_device as restore_isolated_device
+    from isolation import (
+        handle_alert,
+        is_isolated,
+        restore_device as restore_isolated_device
+    )
 except ImportError:
-    from isolation import handle_alert, is_isolated, restore_device as restore_isolated_device
+    handle_alert = None
+    is_isolated = None
+    restore_isolated_device = None
+
+    print(
+        "⚠️ isolation.py introuvable."
+        " L'isolation automatique sera désactivée."
+    )
+
+
+# ============================================================
+# PATHS
+# ============================================================
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+WEB_DIR = BASE_DIR / "web"
+
+
+# ============================================================
+# FLASK
+# ============================================================
 
 app = Flask(
     __name__,
-    static_folder="../web",
+    static_folder=str(WEB_DIR),
     static_url_path=""
 )
 
+
+# ============================================================
+# IDS
+# ============================================================
+
+# Une seule instance de l'IDS est utilisée par le serveur.
+#
+# C'est important car AutomaticIDS conserve un historique
+# temporel :
+#
+# - tentatives de connexion
+# - ports scannés
+# - cooldown des alertes
+#
+# Si on créait une nouvelle instance à chaque événement,
+# ces informations seraient perdues.
+# ============================================================
+
+ids = AutomaticIDS()
+
+
+# ============================================================
+# DATA
+# ============================================================
+
 devices = {}
 logs = []
+
+# Flask et MQTT peuvent accéder simultanément aux données.
+data_lock = threading.Lock()
+
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+MQTT_BROKER = os.getenv(
+    "MQTT_BROKER",
+    "10.42.0.246"
+)
+
+MQTT_PORT = int(
+    os.getenv(
+        "MQTT_PORT",
+        "1883"
+    )
+)
+
+MQTT_TOPIC = os.getenv(
+    "MQTT_TOPIC",
+    "cyberspace/capteurs"
+)
+
+MQTT_CLIENT_ID = os.getenv(
+    "MQTT_CLIENT_ID",
+    "inter-vessel-security-center"
+)
+
+# Modes :
+#
+# observe -> détecte et log, aucune isolation
+# notify  -> détecte et log, aucune isolation
+# isolate -> CRITICAL déclenche isolation
+#
+IDS_RESPONSE_MODE = os.getenv(
+    "IDS_RESPONSE_MODE",
+    "observe"
+).lower()
+
+if IDS_RESPONSE_MODE not in {
+    "observe",
+    "notify",
+    "isolate"
+}:
+    IDS_RESPONSE_MODE = "observe"
+
+
+# ============================================================
+# LOGGING
+# ============================================================
 
 def add_log(
     device,
     severity,
     event_type,
     message,
-    resolved=False
+    resolved=False,
+    ip=None
 ):
+    """
+    Ajoute un événement au système de logs.
+    """
+
     event = {
         "timestamp": datetime.now().isoformat(),
-        "device": device,
-        "severity": severity,
-        "type": event_type,
-        "message": message,
-        "resolved": resolved
+        "device": str(device),
+        "severity": str(severity).upper(),
+        "type": str(event_type),
+        "message": str(message),
+        "resolved": bool(resolved)
     }
-    logs.append(event)
+
+    if ip:
+        event["ip"] = str(ip)
+
+    with data_lock:
+
+        logs.insert(0, event)
+
+        # Évite que la mémoire grossisse indéfiniment.
+        if len(logs) > 1000:
+            logs.pop()
+
+    print(
+        f"[{event['severity']}] "
+        f"{event['device']} | "
+        f"{event['type']} | "
+        f"{event['message']}"
+    )
+
     return event
+
+
+# ============================================================
+# DEVICE MANAGEMENT
+# ============================================================
+
+def register_device(
+    device_id,
+    ip=None
+):
+    """
+    Enregistre un nouveau device ou met à jour
+    les informations d'un device existant.
+    """
+
+    now = datetime.now().isoformat()
+
+    with data_lock:
+
+        if device_id not in devices:
+
+            devices[device_id] = {
+                "id": device_id,
+                "ip": ip or "unknown",
+                "status": "ONLINE",
+                "last_seen": now
+            }
+
+        else:
+
+            if ip:
+                devices[device_id]["ip"] = ip
+
+            devices[device_id]["last_seen"] = now
+
+        return devices[device_id]
+
+
+# ============================================================
+# IDS PROCESSING
+# ============================================================
+
+def analyze_event(event):
+    """
+    Envoie un événement à l'IDS.
+
+    Ton AutomaticIDS.process_event() retourne :
+        list[dict]
+
+    Exemple :
+        [
+            {
+                "timestamp": "...",
+                "device": "VESSEL-01",
+                "ip": "10.42.0.100",
+                "severity": "CRITICAL",
+                "type": "PORT_SCAN",
+                "message": "...",
+                "resolved": False
+            }
+        ]
+    """
+
+    try:
+
+        alerts = ids.process_event(event)
+
+        if not alerts:
+            return []
+
+        return alerts
+
+    except Exception as error:
+
+        print(
+            f"❌ Erreur pendant l'analyse IDS : {error}"
+        )
+
+        add_log(
+            device=event.get(
+                "device",
+                "SYSTEM"
+            ),
+            severity="CRITICAL",
+            event_type="IDS_ERROR",
+            message=(
+                f"IDS processing failed: {error}"
+            ),
+            resolved=False,
+            ip=event.get("ip")
+        )
+
+        return []
+
+
+# ============================================================
+# SECURITY EVENT PIPELINE
+# ============================================================
+
+def process_event(event):
+    """
+    Pipeline central du système.
+
+    Tous les événements provenant :
+        - MQTT
+        - /api/alerts
+        - éventuellement d'autres sources
+    passent par cette fonction.
+    """
+
+    # --------------------------------------------------------
+    # Validation minimale
+    # --------------------------------------------------------
+
+    if not isinstance(event, dict):
+
+        return {
+            "success": False,
+            "error": "Event must be a JSON object"
+        }
+
+    device_id = str(
+        event.get(
+            "device",
+            ""
+        )
+    ).strip()
+
+    if not device_id:
+
+        return {
+            "success": False,
+            "error": "Missing device"
+        }
+
+    ip = event.get("ip")
+
+    if ip is not None:
+        ip = str(ip).strip()
+
+    event_type = str(
+        event.get(
+            "type",
+            event.get(
+                "event",
+                "UNKNOWN"
+            )
+        )
+    ).upper()
+
+    # --------------------------------------------------------
+    # Enrichissement
+    # --------------------------------------------------------
+
+    event["device"] = device_id
+    event["type"] = event_type
+
+    if ip:
+        event["ip"] = ip
+
+    # --------------------------------------------------------
+    # Device
+    # --------------------------------------------------------
+
+    register_device(
+        device_id=device_id,
+        ip=ip
+    )
+
+    # --------------------------------------------------------
+    # IDS
+    # --------------------------------------------------------
+
+    alerts = analyze_event(event)
+
+    # --------------------------------------------------------
+    # Aucun problème détecté
+    # --------------------------------------------------------
+
+    if not alerts:
+
+        # On peut conserver une trace INFO des événements
+        # normaux, mais uniquement pour les événements venant
+        # explicitement du serveur.
+        #
+        # Cela évite de remplir inutilement les logs avec
+        # chaque événement réseau.
+
+        return {
+            "success": True,
+            "detected": False,
+            "alerts": []
+        }
+
+    # --------------------------------------------------------
+    # Une ou plusieurs alertes
+    # --------------------------------------------------------
+
+    processed_alerts = []
+
+    for alert in alerts:
+
+        alert_device = alert.get(
+            "device",
+            device_id
+        )
+
+        alert_ip = alert.get(
+            "ip",
+            ip
+        )
+
+        severity = str(
+            alert.get(
+                "severity",
+                "WARN"
+            )
+        ).upper()
+
+        alert_type = alert.get(
+            "type",
+            "IDS_ALERT"
+        )
+
+        message = alert.get(
+            "message",
+            "Security event detected"
+        )
+
+        # ----------------------------------------------------
+        # Enregistrement
+        # ----------------------------------------------------
+
+        log_event = add_log(
+            device=alert_device,
+            severity=severity,
+            event_type=alert_type,
+            message=message,
+            resolved=False,
+            ip=alert_ip
+        )
+
+        # Conserver l'IP dans l'alerte
+        alert["ip"] = alert_ip
+
+        # ----------------------------------------------------
+        # Réponse automatique
+        # ----------------------------------------------------
+
+        if severity == "CRITICAL":
+
+            handle_critical_alert(
+                alert=log_event,
+                device_id=alert_device,
+                device_ip=alert_ip
+            )
+
+        processed_alerts.append(
+            log_event
+        )
+
+    return {
+        "success": True,
+        "detected": True,
+        "alerts": processed_alerts
+    }
+
+
+# ============================================================
+# CRITICAL RESPONSE
+# ============================================================
+
+def handle_critical_alert(
+    alert,
+    device_id,
+    device_ip
+):
+    """
+    Réponse à une alerte CRITICAL.
+
+    L'IDS détecte.
+    Cette fonction décide quoi faire.
+    isolation.py effectue réellement le blocage.
+    """
+
+    print(
+        f"🚨 CRITICAL : "
+        f"{device_id} / "
+        f"{alert['type']}"
+    )
+
+    # --------------------------------------------------------
+    # OBSERVE
+    # --------------------------------------------------------
+
+    if IDS_RESPONSE_MODE == "observe":
+
+        print(
+            "👁️ IDS_RESPONSE_MODE=observe"
+            " -> aucune action automatique."
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # NOTIFY
+    # --------------------------------------------------------
+
+    if IDS_RESPONSE_MODE == "notify":
+
+        print(
+            "🔔 IDS_RESPONSE_MODE=notify"
+            " -> incident enregistré."
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # ISOLATE
+    # --------------------------------------------------------
+
+    if IDS_RESPONSE_MODE == "isolate":
+
+        if handle_alert is None:
+
+            print(
+                "❌ Isolation impossible : "
+                "isolation.py indisponible."
+            )
+
+            add_log(
+                device=device_id,
+                severity="CRITICAL",
+                event_type="ISOLATION_ERROR",
+                message=(
+                    "Critical alert detected but "
+                    "isolation.py is unavailable."
+                ),
+                resolved=False,
+                ip=device_ip
+            )
+
+            return
+
+        if not device_ip or device_ip == "unknown":
+
+            print(
+                "❌ Isolation impossible : "
+                "IP inconnue."
+            )
+
+            add_log(
+                device=device_id,
+                severity="CRITICAL",
+                event_type="ISOLATION_ERROR",
+                message=(
+                    "Critical alert detected but "
+                    "device IP is unknown."
+                ),
+                resolved=False,
+                ip=device_ip
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # Isolation
+        # ----------------------------------------------------
+
+        try:
+
+            success = handle_alert(
+                alert
+            )
+
+        except Exception as error:
+
+            success = False
+
+            print(
+                f"❌ Exception isolation : {error}"
+            )
+
+        if success:
+
+            with data_lock:
+
+                if device_id in devices:
+
+                    devices[device_id]["status"] = (
+                        "ISOLATED"
+                    )
+
+            add_log(
+                device=device_id,
+                severity="CRITICAL",
+                event_type="DEVICE_ISOLATED",
+                message=(
+                    "Device automatically isolated "
+                    "after a critical security event."
+                ),
+                resolved=False,
+                ip=device_ip
+            )
+
+            print(
+                f"🔒 {device_id} ISOLATED"
+            )
+
+        else:
+
+            add_log(
+                device=device_id,
+                severity="CRITICAL",
+                event_type="ISOLATION_FAILED",
+                message=(
+                    "Critical event detected but "
+                    "automatic isolation failed."
+                ),
+                resolved=False,
+                ip=device_ip
+            )
+
+            print(
+                f"❌ Impossible d'isoler {device_id}"
+            )
+
+
+# ============================================================
+# MQTT
+# ============================================================
+
+def on_mqtt_connect(
+    client,
+    userdata,
+    flags,
+    rc
+):
+    """
+    Connexion au broker MQTT.
+    """
+
+    if rc != 0:
+
+        print(
+            f"❌ Connexion MQTT échouée : {rc}"
+        )
+
+        add_log(
+            device="SYSTEM",
+            severity="CRITICAL",
+            event_type="MQTT_CONNECTION_ERROR",
+            message=(
+                f"MQTT broker connection failed "
+                f"with code {rc}"
+            ),
+            resolved=False
+        )
+
+        return
+
+    print(
+        "✅ Connecté au broker MQTT."
+    )
+
+    print(
+        f"📡 Subscription : {MQTT_TOPIC}"
+    )
+
+    client.subscribe(
+        MQTT_TOPIC,
+        qos=1
+    )
+
+
+def on_mqtt_disconnect(
+    client,
+    userdata,
+    rc
+):
+
+    print(
+        f"⚠️ MQTT déconnecté : {rc}"
+    )
+
+
+def on_mqtt_message(
+    client,
+    userdata,
+    msg
+):
+    """
+    Réception d'un événement MQTT.
+
+    Le payload doit idéalement être du JSON.
+    """
+
+    # --------------------------------------------------------
+    # Décodage
+    # --------------------------------------------------------
+
+    try:
+
+        payload = msg.payload.decode(
+            "utf-8"
+        )
+
+    except UnicodeDecodeError:
+
+        print(
+            "❌ MQTT payload invalide."
+        )
+
+        add_log(
+            device="UNKNOWN",
+            severity="WARN",
+            event_type="MQTT_INVALID_PAYLOAD",
+            message="Invalid UTF-8 MQTT payload.",
+            resolved=False
+        )
+
+        return
+
+    print(
+        f"📥 MQTT [{msg.topic}] : {payload}"
+    )
+
+    # --------------------------------------------------------
+    # JSON
+    # --------------------------------------------------------
+
+    try:
+
+        event = json.loads(
+            payload
+        )
+
+    except json.JSONDecodeError:
+
+        print(
+            "⚠️ Payload MQTT non-JSON."
+        )
+
+        add_log(
+            device="UNKNOWN",
+            severity="WARN",
+            event_type="MQTT_INVALID_JSON",
+            message=(
+                "Received MQTT payload that "
+                "is not valid JSON."
+            ),
+            resolved=False
+        )
+
+        return
+
+    if not isinstance(event, dict):
+
+        add_log(
+            device="UNKNOWN",
+            severity="WARN",
+            event_type="MQTT_INVALID_EVENT",
+            message=(
+                "MQTT payload must contain "
+                "a JSON object."
+            ),
+            resolved=False
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # Heartbeat
+    # --------------------------------------------------------
+    #
+    # Le heartbeat ne doit pas être envoyé à l'IDS comme
+    # une attaque réseau.
+    #
+    # Il sert principalement à maintenir le statut du device.
+    # --------------------------------------------------------
+
+    event_type = str(
+        event.get(
+            "type",
+            ""
+        )
+    ).upper()
+
+    if event_type == "HEARTBEAT":
+
+        device_id = event.get(
+            "device"
+        )
+
+        if not device_id:
+
+            add_log(
+                device="UNKNOWN",
+                severity="WARN",
+                event_type="INVALID_HEARTBEAT",
+                message=(
+                    "Heartbeat without device ID."
+                ),
+                resolved=False
+            )
+
+            return
+
+        now = datetime.now().isoformat()
+
+        register_device(
+            device_id=device_id,
+            ip=event.get("ip")
+        )
+
+        with data_lock:
+
+            if devices[device_id]["status"] != "ISOLATED":
+
+                devices[device_id]["status"] = (
+                    "ONLINE"
+                )
+
+            devices[device_id]["last_seen"] = now
+
+        print(
+            f"💓 Heartbeat : {device_id}"
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # Tous les autres événements
+    # --------------------------------------------------------
+
+    result = process_event(
+        event
+    )
+
+    if result.get("detected"):
+
+        print(
+            f"🚨 {len(result['alerts'])}"
+            " alerte(s) générée(s)."
+        )
+
+
+def start_mqtt():
+
+    client = mqtt.Client(
+        client_id=MQTT_CLIENT_ID
+    )
+
+    client.on_connect = on_mqtt_connect
+    client.on_message = on_mqtt_message
+    client.on_disconnect = on_mqtt_disconnect
+
+    try:
+
+        client.connect(
+            MQTT_BROKER,
+            MQTT_PORT,
+            60
+        )
+
+        client.loop_start()
+
+        print(
+            f"📡 MQTT démarré : "
+            f"{MQTT_BROKER}:{MQTT_PORT}"
+        )
+
+        return client
+
+    except Exception as error:
+
+        print(
+            f"⚠️ Impossible de joindre "
+            f"le broker MQTT : {error}"
+        )
+
+        add_log(
+            device="SYSTEM",
+            severity="CRITICAL",
+            event_type="MQTT_CONNECTION_ERROR",
+            message=str(error),
+            resolved=False
+        )
+
+        return None
+
+
+# ============================================================
+# WEB
+# ============================================================
 
 @app.route("/")
 def index():
-    return send_from_directory("../web", "index.html")
 
-@app.route("/api/devices", methods=["GET"])
-def get_devices():
-    return jsonify(
-        list(devices.values())
+    return send_from_directory(
+        WEB_DIR,
+        "index.html"
     )
 
-@app.route("/api/logs", methods=["GET"])
-def get_logs():
-    return jsonify(logs)
 
-@app.route("/api/alerts", methods=["POST"])
+# ============================================================
+# API DEVICES
+# ============================================================
+
+@app.route(
+    "/api/devices",
+    methods=["GET"]
+)
+def api_devices():
+
+    with data_lock:
+
+        return jsonify(
+            list(devices.values())
+        )
+
+
+# ============================================================
+# API LOGS
+# ============================================================
+
+@app.route(
+    "/api/logs",
+    methods=["GET"]
+)
+def api_logs():
+
+    with data_lock:
+
+        return jsonify(
+            logs
+        )
+
+
+# ============================================================
+# API ALERTS
+# ============================================================
+
+@app.route(
+    "/api/alerts",
+    methods=["POST"]
+)
 def receive_alert():
 
-    data = request.get_json()
+    data = request.get_json(
+        silent=True
+    )
 
     if not data:
+
         return jsonify({
             "error": "JSON body required"
         }), 400
 
+    if not isinstance(data, dict):
+
+        return jsonify({
+            "error": "JSON object required"
+        }), 400
+
+    # --------------------------------------------------------
+    # Champs minimum
+    # --------------------------------------------------------
 
     required_fields = [
         "device",
-        "severity",
         "type",
         "message"
     ]
@@ -74,76 +968,121 @@ def receive_alert():
     ]
 
     if missing:
+
         return jsonify({
             "error": "Missing fields",
             "fields": missing
         }), 400
 
-    device_id = data["device"]
-    if device_id not in devices:
+    # --------------------------------------------------------
+    # Important :
+    #
+    # Une alerte envoyée à cette route par ids.py est déjà
+    # une alerte détectée.
+    #
+    # On ne repasse donc PAS cette alerte dans l'IDS.
+    #
+    # Sinon :
+    #
+    # IDS -> /api/alerts -> IDS -> /api/alerts -> ...
+    #
+    # pourrait créer une boucle.
+    # --------------------------------------------------------
 
-        devices[device_id] = {
-            "id": device_id,
-            "ip": data.get("ip", "unknown"),
-            "status": "ONLINE",
-            "last_seen": None
-        }
+    device_id = str(
+        data["device"]
+    )
+
+    ip = data.get(
+        "ip"
+    )
+
+    register_device(
+        device_id=device_id,
+        ip=ip
+    )
+
+    severity = str(
+        data.get(
+            "severity",
+            "WARN"
+        )
+    ).upper()
 
     event = add_log(
         device=device_id,
-        severity=str(data["severity"]).upper(),
+        severity=severity,
         event_type=data["type"],
         message=data["message"],
-        resolved=data.get("resolved", False)
+        resolved=data.get(
+            "resolved",
+            False
+        ),
+        ip=ip
     )
 
-    event["ip"] = data.get("ip", devices[device_id].get("ip"))
-    response_mode = os.getenv("IDS_RESPONSE_MODE", "observe").lower()
-    if response_mode not in {"observe", "notify", "isolate"}:
-        response_mode = "observe"
+    # --------------------------------------------------------
+    # Réponse automatique
+    # --------------------------------------------------------
 
-    if response_mode == "isolate" and not handle_alert(event):
-        return jsonify({
-            "error": "Isolation action failed",
-            "event": event
-        }), 502
+    if severity == "CRITICAL":
 
-    if response_mode == "isolate" and event["severity"] == "CRITICAL" and not event["resolved"]:
-        devices[device_id]["status"] = "ISOLATED"
-    elif event["resolved"] and event["ip"] and not is_isolated(event["ip"]):
-        devices[device_id]["status"] = "ONLINE"
-
+        handle_critical_alert(
+            alert=event,
+            device_id=device_id,
+            device_ip=ip
+        )
 
     return jsonify({
         "success": True,
         "event": event
     }), 201
 
-@app.route("/api/heartbeat", methods=["POST"])
+
+# ============================================================
+# API HEARTBEAT
+# ============================================================
+
+@app.route(
+    "/api/heartbeat",
+    methods=["POST"]
+)
 def heartbeat():
 
-    data = request.get_json()
+    data = request.get_json(
+        silent=True
+    )
 
-    if not data or "device" not in data:
+    if not data:
+
+        return jsonify({
+            "error": "JSON body required"
+        }), 400
+
+    if "device" not in data:
+
         return jsonify({
             "error": "device field required"
         }), 400
 
-    device_id = data["device"]
+    device_id = str(
+        data["device"]
+    )
+
     now = datetime.now().isoformat()
 
-    if device_id not in devices:
-        devices[device_id] = {
-            "id": device_id,
-            "ip": data.get("ip", "unknown"),
-            "status": "ONLINE",
-            "last_seen": now
-        }
+    register_device(
+        device_id=device_id,
+        ip=data.get("ip")
+    )
 
-    else:
-        devices[device_id]["last_seen"] = now
+    with data_lock:
+
         if devices[device_id]["status"] != "ISOLATED":
+
             devices[device_id]["status"] = "ONLINE"
+
+        devices[device_id]["last_seen"] = now
 
     return jsonify({
         "success": True,
@@ -151,33 +1090,103 @@ def heartbeat():
         "timestamp": now
     })
 
-@app.route("/api/devices/<device_id>/restore", methods=["POST"])
+
+# ============================================================
+# API RESTORE
+# ============================================================
+
+@app.route(
+    "/api/devices/<device_id>/restore",
+    methods=["POST"]
+)
 def restore_device(device_id):
 
-    if device_id not in devices:
+    # --------------------------------------------------------
+    # Device
+    # --------------------------------------------------------
+
+    with data_lock:
+
+        device = devices.get(
+            device_id
+        )
+
+    if device is None:
+
         return jsonify({
             "error": "Device not found"
         }), 404
 
+    device_ip = device.get(
+        "ip"
+    )
 
-    device_ip = devices[device_id].get("ip")
-    if not device_ip or not restore_isolated_device(device_ip):
+    if not device_ip or device_ip == "unknown":
+
+        return jsonify({
+            "error": "Device has no valid IP"
+        }), 400
+
+    # --------------------------------------------------------
+    # Isolation module
+    # --------------------------------------------------------
+
+    if restore_isolated_device is None:
+
+        return jsonify({
+            "error": "isolation.py unavailable"
+        }), 503
+
+    # --------------------------------------------------------
+    # Restore
+    # --------------------------------------------------------
+
+    try:
+
+        success = restore_isolated_device(
+            device_ip
+        )
+
+    except Exception as error:
+
+        print(
+            f"❌ Restore error : {error}"
+        )
+
+        return jsonify({
+            "error": "Firewall restore failed",
+            "details": str(error)
+        }), 502
+
+    if not success:
+
         return jsonify({
             "error": "Firewall restore failed",
             "device": device_id
         }), 502
 
-    devices[device_id]["status"] = "ONLINE"
+    # --------------------------------------------------------
+    # Update status
+    # --------------------------------------------------------
 
+    now = datetime.now().isoformat()
+
+    with data_lock:
+
+        devices[device_id]["status"] = "ONLINE"
+        devices[device_id]["last_seen"] = now
 
     add_log(
         device=device_id,
         severity="INFO",
         event_type="DEVICE_RESTORED",
-        message="Device restored and communication allowed again.",
-        resolved=True
+        message=(
+            "Device restored and communication "
+            "allowed again."
+        ),
+        resolved=True,
+        ip=device_ip
     )
-
 
     return jsonify({
         "success": True,
@@ -185,10 +1194,74 @@ def restore_device(device_id):
         "status": "ONLINE"
     })
 
+
+# ============================================================
+# HEALTH CHECK
+# ============================================================
+
+@app.route(
+    "/api/status",
+    methods=["GET"]
+)
+def api_status():
+
+    with data_lock:
+
+        return jsonify({
+            "status": "ONLINE",
+            "ids": "ONLINE",
+            "mqtt": "ONLINE",
+            "response_mode": IDS_RESPONSE_MODE,
+            "devices": len(devices),
+            "logs": len(logs),
+            "timestamp": datetime.now().isoformat()
+        })
+
+
+# ============================================================
+# START SERVER
+# ============================================================
+
 if __name__ == "__main__":
+
+    print()
+    print("=" * 60)
+    print("       INTER-VESSEL SECURITY CENTER")
+    print("=" * 60)
+    print()
+    print(
+        f"🌐 Web           : http://0.0.0.0:5000"
+    )
+    print(
+        f"🛡️ IDS           : AutomaticIDS"
+    )
+    print(
+        f"📡 MQTT Broker   : "
+        f"{MQTT_BROKER}:{MQTT_PORT}"
+    )
+    print(
+        f"📨 MQTT Topic    : "
+        f"{MQTT_TOPIC}"
+    )
+    print(
+        f"⚙️ Response mode : "
+        f"{IDS_RESPONSE_MODE}"
+    )
+    print()
+
+    # --------------------------------------------------------
+    # MQTT
+    # --------------------------------------------------------
+
+    mqtt_client = start_mqtt()
+
+    # --------------------------------------------------------
+    # Flask
+    # --------------------------------------------------------
 
     app.run(
         host="0.0.0.0",
         port=5000,
-        debug=True
+        debug=False,
+        threaded=True
     )
