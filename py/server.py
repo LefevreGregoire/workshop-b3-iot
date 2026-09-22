@@ -120,7 +120,7 @@ MQTT_PORT = int(
 
 MQTT_TOPIC = os.getenv(
     "MQTT_TOPIC",
-    "cyberspace/capteurs"
+    "cyberspace/capteurs/#"
 )
 
 MQTT_CLIENT_ID = os.getenv(
