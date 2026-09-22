@@ -54,10 +54,24 @@ def classify(alert: dict) -> dict:
 def sort_alerts(alerts: list[dict]) -> list[dict]:
     """Classify then sort: CRITICAL first, unresolved first, newest first."""
     alerts = [classify(a) for a in alerts]
+    return sort_by_severity(alerts)
+
+
+def sort_by_severity(alerts: list[dict]) -> list[dict]:
+    """Sort already-classified alerts: CRITICAL first, unresolved first, newest first.
+
+    Unlike sort_alerts(), this never rewrites an alert's 'severity' - it only
+    orders them. Severities outside LOG/WARN/CRITICAL (e.g. "INFO" system
+    entries) sort last without being changed.
+    """
     # Stable sorts, least important key first
     alerts = sorted(alerts, key=lambda a: a.get("timestamp", ""), reverse=True)
     alerts = sorted(alerts, key=lambda a: bool(a.get("resolved", False)))
-    return sorted(alerts, key=lambda a: LEVELS[a["severity"]], reverse=True)
+    return sorted(
+        alerts,
+        key=lambda a: LEVELS.get(str(a.get("severity", "")).upper(), -1),
+        reverse=True,
+    )
 
 
 if __name__ == "__main__":

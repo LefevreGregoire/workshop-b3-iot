@@ -48,6 +48,62 @@ except ImportError:
 
 
 # ============================================================
+# IMPORT CLASIFY
+# ============================================================
+# Classification automatique de la sévérité (LOG/WARN/CRITICAL)
+# quand l'appelant n'en fournit pas, et tri des logs par risque.
+# ============================================================
+
+try:
+    from clasify import classify_alert, sort_by_severity
+except ImportError:
+    classify_alert = None
+    sort_by_severity = None
+
+    print(
+        "⚠️ clasify.py introuvable."
+        " La classification automatique sera désactivée."
+    )
+
+
+# ============================================================
+# IMPORT CYPHER
+# ============================================================
+# Permet aux devices d'envoyer un heartbeat chiffré
+# ({"token": "..."}) au lieu d'un JSON en clair. Nécessite la
+# variable d'environnement IDS_SECRET_KEY côté serveur.
+# ============================================================
+
+try:
+    from cypher import decrypt_message as decrypt_heartbeat_token
+except ImportError:
+    decrypt_heartbeat_token = None
+
+    print(
+        "⚠️ cypher.py introuvable."
+        " Les heartbeats chiffrés seront refusés."
+    )
+
+
+# ============================================================
+# IMPORT WATCHDOG
+# ============================================================
+# Surveille en continu les devices qui n'envoient plus de
+# heartbeat, et rappelle les alertes CRITICAL non résolues.
+# ============================================================
+
+try:
+    import watchdog as watchdog_module
+except ImportError:
+    watchdog_module = None
+
+    print(
+        "⚠️ watchdog.py introuvable."
+        " La surveillance automatique des devices sera désactivée."
+    )
+
+
+# ============================================================
 # PATHS
 # ============================================================
 
@@ -879,6 +935,35 @@ def start_mqtt():
 
 
 # ============================================================
+# WATCHDOG
+# ============================================================
+
+def start_watchdog():
+    """Run watchdog.py's checks in a background thread, against this
+    same server (loopback HTTP), instead of as a separate process."""
+
+    if watchdog_module is None:
+        return None
+
+    watchdog_module.SERVER_URL = "http://localhost:5000"
+
+    thread = threading.Thread(
+        target=watchdog_module.run_forever,
+        name="watchdog",
+        daemon=True
+    )
+    thread.start()
+
+    print(
+        "🐕 Watchdog démarré"
+        " (vérifie les devices toutes les"
+        f" {watchdog_module.CHECK_INTERVAL}s)."
+    )
+
+    return thread
+
+
+# ============================================================
 # WEB
 # ============================================================
 
@@ -919,10 +1004,12 @@ def api_devices():
 def api_logs():
 
     with data_lock:
+        snapshot = list(logs)
 
-        return jsonify(
-            logs
-        )
+    if sort_by_severity:
+        snapshot = sort_by_severity(snapshot)
+
+    return jsonify(snapshot)
 
 
 # ============================================================
@@ -1002,12 +1089,16 @@ def receive_alert():
         ip=ip
     )
 
-    severity = str(
-        data.get(
-            "severity",
-            "WARN"
-        )
-    ).upper()
+    severity_raw = data.get("severity")
+
+    if severity_raw:
+        severity = str(severity_raw).upper()
+    elif classify_alert:
+        # No severity given: classify from the alert's type/message
+        # instead of blindly defaulting to WARN.
+        severity = classify_alert(data)
+    else:
+        severity = "WARN"
 
     event = add_log(
         device=device_id,
@@ -1059,21 +1150,64 @@ def heartbeat():
             "error": "JSON body required"
         }), 400
 
-    if "device" not in data:
+    # ----------------------------------------------------------
+    # Heartbeat chiffré (device -> Center Device)
+    #
+    # Un device peut envoyer {"token": "<fernet>"} au lieu du
+    # JSON en clair habituel. Le token vient de
+    # cypher.encrypt_message(device_id, {"ip": ...}).
+    # Le JSON en clair reste accepté (compatibilité).
+    # ----------------------------------------------------------
 
-        return jsonify({
-            "error": "device field required"
-        }), 400
+    if "token" in data:
 
-    device_id = str(
-        data["device"]
-    )
+        if decrypt_heartbeat_token is None:
+
+            return jsonify({
+                "error": "Encrypted heartbeats are not supported (cypher.py unavailable)"
+            }), 503
+
+        try:
+            decrypted = decrypt_heartbeat_token(data["token"])
+        except RuntimeError as error:
+
+            return jsonify({
+                "error": f"Server misconfiguration: {error}"
+            }), 503
+
+        if decrypted is None:
+
+            return jsonify({
+                "error": "Invalid, tampered or expired token"
+            }), 401
+
+        device_id = str(decrypted.get("device", "")).strip()
+        ip = (decrypted.get("data") or {}).get("ip")
+
+        if not device_id:
+
+            return jsonify({
+                "error": "Encrypted heartbeat missing device"
+            }), 400
+
+    else:
+
+        if "device" not in data:
+
+            return jsonify({
+                "error": "device field required"
+            }), 400
+
+        device_id = str(
+            data["device"]
+        )
+        ip = data.get("ip")
 
     now = datetime.now().isoformat()
 
     register_device(
         device_id=device_id,
-        ip=data.get("ip")
+        ip=ip
     )
 
     with data_lock:
@@ -1254,6 +1388,12 @@ if __name__ == "__main__":
     # --------------------------------------------------------
 
     mqtt_client = start_mqtt()
+
+    # --------------------------------------------------------
+    # Watchdog
+    # --------------------------------------------------------
+
+    watchdog_thread = start_watchdog()
 
     # --------------------------------------------------------
     # Flask
