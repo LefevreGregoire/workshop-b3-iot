@@ -7,28 +7,7 @@ import threading
 
 import paho.mqtt.client as mqtt
 
-# ============================================================
-# IMPORT IDS
-# ============================================================
-
 from ids import AutomaticIDS
-
-
-# ============================================================
-# IMPORT ISOLATION
-# ============================================================
-#
-# Adapte UNIQUEMENT cet import si isolation.py n'est pas dans
-# le même dossier que server.py.
-#
-# Exemple actuel :
-#
-# py/
-# ├── server.py
-# ├── ids.py
-# └── isolation.py
-#
-# ============================================================
 
 try:
     from isolation import (
@@ -46,18 +25,8 @@ except ImportError:
         " L'isolation automatique sera désactivée."
     )
 
-
-# ============================================================
-# PATHS
-# ============================================================
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 WEB_DIR = BASE_DIR / "web"
-
-
-# ============================================================
-# FLASK
-# ============================================================
 
 app = Flask(
     __name__,
@@ -65,35 +34,10 @@ app = Flask(
     static_url_path=""
 )
 
-
-# ============================================================
-# IDS
-# ============================================================
-
-# Une seule instance de l'IDS est utilisée par le serveur.
-#
-# C'est important car AutomaticIDS conserve un historique
-# temporel :
-#
-# - tentatives de connexion
-# - ports scannés
-# - cooldown des alertes
-#
-# Si on créait une nouvelle instance à chaque événement,
-# ces informations seraient perdues.
-# ============================================================
-
 ids = AutomaticIDS()
-
-
-# ============================================================
-# DATA
-# ============================================================
 
 devices = {}
 logs = []
-
-# Flask et MQTT peuvent accéder simultanément aux données.
 data_lock = threading.Lock()
 
 
