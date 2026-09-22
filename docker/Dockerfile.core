@@ -1,0 +1,46 @@
+# Dockerfile.core
+# Image du service "ids-core" : scripts de classification d'alertes,
+# first-response (isolation réseau) et check de statut des devices.
+#
+# Nécessite les capabilities NET_ADMIN / NET_RAW au runtime pour piloter
+# iptables (voir docker-compose.yml). Image basée sur python:slim pour
+# rester légère sur du Raspberry Pi (support multi-arch via buildx, cf. CI).
+
+FROM python:3.11-slim
+
+LABEL org.opencontainers.image.title="ids-core"
+LABEL org.opencontainers.image.description="Alert classification + automated first-response for the inter-vessel IDS"
+
+# iptables : nécessaire pour l'isolation réseau automatique (first_response.py)
+# tini : reap correct des process + gestion propre des signaux (SIGTERM) en PID 1
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        iptables \
+        tini \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY scripting/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY scripting/ ./scripting/
+
+# Répertoires partagés (montés en volumes dans docker-compose.yml)
+RUN mkdir -p /app/logs /app/config
+
+ENV IDS_DEVICES_CONFIG=/app/scripting/devices.yaml \
+    IDS_ALERTS_LOG=/app/logs/alerts.jsonl \
+    IDS_ACTIONS_LOG=/app/logs/first_response_actions.jsonl \
+    IDS_ISOLATION_STATE=/app/config/isolated_devices.json \
+    PYTHONUNBUFFERED=1
+
+# NOTE sécurité : ce service reste root à l'intérieur du conteneur car la
+# gestion iptables nécessite CAP_NET_ADMIN/CAP_NET_RAW en pratique de façon
+# fiable pour un process non-root (setcap sur le binaire serait une option
+# mais fragile selon la distro). Le compromis est documenté et compensé par :
+#   - cap_drop: ALL puis cap_add ciblé (NET_ADMIN, NET_RAW) dans docker-compose.yml
+#   - aucune exposition réseau entrante sur ce service
+#   - lecture seule du reste du filesystem (read_only: true en compose)
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["python3", "scripting/first_response.py"]
