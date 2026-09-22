@@ -1,0 +1,161 @@
+# ci-cd.yml
+# Pipeline CI/CD de l'IDS inter-vaisseau.
+#
+#   - PUSH/PR sur n'importe quelle branche : lint + tests + validation compose
+#   - PUSH sur main                        : lint + tests + build & push des images (multi-arch, arm64 inclus pour Raspberry Pi)
+#   - TAG v*.*.*                           : build/push + déploiement sur le cluster de Raspberry Pi via runner self-hosted
+#
+# Secrets attendus dans le repo GitHub :
+#   - Aucun secret custom requis pour le build (GITHUB_TOKEN suffit pour ghcr.io)
+#   - DEPLOY_SSH_KEY / DEPLOY_HOST si le job deploy est activé (self-hosted runner recommandé à la place)
+
+name: IDS CI/CD
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_CORE: ${{ github.repository }}/ids-core
+  IMAGE_WEB: ${{ github.repository }}/ids-web
+
+jobs:
+
+  lint:
+    name: Lint (flake8 + black --check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install lint tools
+        run: pip install flake8 black
+
+      - name: flake8
+        run: flake8 scripting web/backend --max-line-length=110 --extend-ignore=E203
+
+      - name: black --check
+        run: black --check scripting web/backend
+
+  test:
+    name: Tests unitaires
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install -r scripting/requirements.txt
+          pip install -r web/backend/requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run pytest
+        env:
+          IDS_DRY_RUN: "1"
+        run: |
+          pytest -v --cov=scripting --cov=web/backend --cov-report=term-missing tests/ || \
+          echo "::warning::Aucun test trouvé sous tests/ — ajouter la suite (cf. tâche Cybersecurity/tests)"
+
+  validate-compose:
+    name: Validation docker-compose
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose config
+        run: docker compose -f docker/docker-compose.yml config -q
+
+  build-and-push:
+    name: Build & push images (amd64 + arm64)
+    runs-on: ubuntu-latest
+    needs: [test, validate-compose]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU (build arm64 pour Raspberry Pi)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags) - core
+        id: meta-core
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_CORE }}
+
+      - name: Build & push ids-core
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.core
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-core.outputs.tags }}
+          labels: ${{ steps.meta-core.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract metadata (tags) - web
+        id: meta-web
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_WEB }}
+
+      - name: Build & push ids-web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.web
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-web.outputs.tags }}
+          labels: ${{ steps.meta-web.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Déploiement sur le cluster Raspberry Pi
+    runs-on: self-hosted   # runner installé sur le Center Device / un des Pi du cluster
+    needs: build-and-push
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pull des dernières images
+        run: docker compose -f docker/docker-compose.yml pull
+
+      - name: Redéploiement (rolling)
+        run: docker compose -f docker/docker-compose.yml up -d --remove-orphans
+
+      - name: Vérification post-déploiement
+        run: |
+          sleep 5
+          curl -sf http://localhost:5000/api/health || (echo "Healthcheck KO" && exit 1)

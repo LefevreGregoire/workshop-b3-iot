@@ -1,16 +1,89 @@
+# docker-compose.yml
+# Orchestration complète de l'IDS inter-vaisseau :
+#   - mosquitto : bus de messages MQTT pour la communication device <-> center
+#   - ids-core  : classification des alertes + first-response (isolation réseau)
+#   - ids-web   : API + dashboard temps réel pour l'administrateur
+#
+# Lancer depuis la racine du projet :
+#   docker compose -f docker/docker-compose.yml up -d --build
+
 services:
 
-  ids:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: ids-mosquitto
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+    ports:
+      - "1883:1883"          # exposé pour que les devices (autres Raspberry Pi) publient dessus
+    networks:
+      - ids-net
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -i healthcheck -W 3 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  ids-core:
     build:
       context: ..
-      dockerfile: Docker/Dockerfile
-
-    container_name: inter-vessel-ids
-
+      dockerfile: docker/Dockerfile.core
+    container_name: ids-core
     restart: unless-stopped
-
-    volumes:
-      - ../py:/app/py
-
+    depends_on:
+      mosquitto:
+        condition: service_healthy
     environment:
-      - PYTHONUNBUFFERED=1
+      # network_mode: host => pas de DNS interne docker-compose ici, on cible
+      # le port mosquitto publié sur l'hôte (voir "ports" du service mosquitto).
+      MQTT_HOST: localhost
+      MQTT_PORT: "1883"
+      IDS_LOG_LEVEL: INFO
+      IDS_POLL_INTERVAL_S: "2"
+      # IDS_DRY_RUN=1 en environnement de dev/CI sans droits root réels sur le hôte
+      IDS_DRY_RUN: "${IDS_DRY_RUN:-0}"
+    volumes:
+      - ../logs:/app/logs
+      - ../config:/app/config
+    # iptables doit pouvoir modifier les tables de filtrage réseau du hôte :
+    # capabilities minimales plutôt que privileged: true.
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    network_mode: host     # nécessaire pour que les règles iptables portent sur l'interface réelle du Center Device
+    networks: []
+
+  ids-web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    container_name: ids-web
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+    volumes:
+      - ../logs:/app/logs:ro
+      - ../config:/app/config:ro
+    ports:
+      - "5000:5000"
+    networks:
+      - ids-net
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  ids-net:
+    driver: bridge
+
+volumes:
+  mosquitto-data:
