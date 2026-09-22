@@ -33,6 +33,11 @@ from typing import Any, Iterator
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+try:
+    import paho.mqtt.client as mqtt
+except ImportError:
+    mqtt = None
+
 logger = logging.getLogger("IDS-Detect")
 
 CRITICAL = "CRITICAL"
@@ -211,6 +216,58 @@ class AlertSender:
         return False
 
 
+class MqttIDS:
+    """Consume device events from MQTT and publish detector alerts."""
+
+    def __init__(
+        self,
+        detector: AutomaticIDS,
+        broker: str,
+        port: int = 1883,
+        event_topic: str = "ids/devices/+/events",
+        alert_topic: str = "ids/alerts",
+        alert_sender: AlertSender | None = None,
+    ) -> None:
+        if mqtt is None:
+            raise RuntimeError("paho-mqtt is required for MQTT mode")
+        self.detector = detector
+        self.event_topic = event_topic
+        self.alert_topic = alert_topic
+        self.alert_sender = alert_sender
+        self.client = mqtt.Client()
+        self.client.on_connect = self._on_connect
+        self.client.on_message = self._on_message
+        self.broker = broker
+        self.port = port
+
+    def run(self) -> None:
+        self.client.connect(self.broker, self.port, keepalive=60)
+        self.client.loop_forever()
+
+    def _on_connect(self, client: Any, userdata: Any, flags: dict[str, Any], rc: int) -> None:
+        if rc != 0:
+            logger.error("MQTT connection failed with code %s", rc)
+            return
+        client.subscribe(self.event_topic)
+        logger.info("Subscribed to %s", self.event_topic)
+
+    def _on_message(self, client: Any, userdata: Any, message: Any) -> None:
+        try:
+            event = json.loads(message.payload.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            logger.warning("Ignoring invalid MQTT event: %s", error)
+            return
+        if not isinstance(event, dict):
+            logger.warning("Ignoring non-object MQTT event")
+            return
+
+        for alert in self.detector.process_event(event):
+            client.publish(self.alert_topic, json.dumps(alert), qos=1)
+            if self.alert_sender:
+                self.alert_sender.send(alert)
+            logger.warning("Detected %s: %s", alert["type"], alert["message"])
+
+
 def _event_time(event: dict[str, Any]) -> float:
     value = event.get("timestamp")
     if not value:
@@ -257,11 +314,26 @@ def main() -> int:
     parser.add_argument("--device", help="Default device for events missing a device")
     parser.add_argument("--input-file", help="Read JSON events from this file instead of stdin")
     parser.add_argument("--follow", action="store_true", help="Wait for new lines in --input-file")
+    parser.add_argument("--mqtt-broker", help="Subscribe to MQTT instead of reading stdin")
+    parser.add_argument("--mqtt-port", type=int, default=1883)
+    parser.add_argument("--mqtt-event-topic", default="ids/devices/+/events")
+    parser.add_argument("--mqtt-alert-topic", default="ids/alerts")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
     detector = AutomaticIDS()
     sender = AlertSender(args.server_url)
+    if args.mqtt_broker:
+        MqttIDS(
+            detector=detector,
+            broker=args.mqtt_broker,
+            port=args.mqtt_port,
+            event_topic=args.mqtt_event_topic,
+            alert_topic=args.mqtt_alert_topic,
+            alert_sender=sender,
+        ).run()
+        return 0
+
     input_stream = open(args.input_file, "r", encoding="utf-8") if args.input_file else sys.stdin
     try:
         for event in read_events(input_stream, follow=args.follow):

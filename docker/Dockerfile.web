@@ -1,6 +1,5 @@
 # Dockerfile.web
-# Image du service "ids-web" : API Flask + dashboard (statique) servis
-# ensemble via gunicorn.
+# Image du service "ids-web" : API Flask + dashboard statique.
 
 FROM python:3.11-slim
 
@@ -9,19 +8,17 @@ LABEL org.opencontainers.image.description="Dashboard temps réel + API de logs/
 
 WORKDIR /app
 
-COPY web/backend/requirements.txt ./requirements.txt
+COPY py/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY web/backend/ ./backend/
-COPY web/frontend/ ./frontend/
-COPY scripting/devices.yaml ./scripting/devices.yaml
+COPY py/ ./py/
+COPY web/ ./web/
 
 RUN mkdir -p /app/logs /app/config
 
-ENV IDS_DEVICES_CONFIG=/app/scripting/devices.yaml \
+ENV IDS_RESPONSE_MODE=observe \
     IDS_ALERTS_LOG=/app/logs/alerts.jsonl \
     IDS_HEARTBEATS=/app/logs/heartbeats.jsonl \
-    FRONTEND_DIR=/app/frontend \
     PYTHONUNBUFFERED=1
 
 RUN useradd --create-home --uid 1001 webrunner \
@@ -30,5 +27,4 @@ USER webrunner
 
 EXPOSE 5000
 
-CMD ["gunicorn", "--chdir", "backend", "--bind", "0.0.0.0:5000", \
-     "--workers", "2", "--threads", "4", "--timeout", "60", "app:app"]
+CMD ["python3", "py/server.py"]

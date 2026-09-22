@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, send_from_directory
 from datetime import datetime
+import os
 from pathlib import Path
 
 try:
@@ -97,13 +98,17 @@ def receive_alert():
     )
 
     event["ip"] = data.get("ip", devices[device_id].get("ip"))
-    if not handle_alert(event):
+    response_mode = os.getenv("IDS_RESPONSE_MODE", "observe").lower()
+    if response_mode not in {"observe", "notify", "isolate"}:
+        response_mode = "observe"
+
+    if response_mode == "isolate" and not handle_alert(event):
         return jsonify({
             "error": "Isolation action failed",
             "event": event
         }), 502
 
-    if event["severity"] == "CRITICAL" and not event["resolved"]:
+    if response_mode == "isolate" and event["severity"] == "CRITICAL" and not event["resolved"]:
         devices[device_id]["status"] = "ISOLATED"
     elif event["resolved"] and event["ip"] and not is_isolated(event["ip"]):
         devices[device_id]["status"] = "ONLINE"

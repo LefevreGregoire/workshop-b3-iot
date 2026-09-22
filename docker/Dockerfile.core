@@ -20,15 +20,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY scripting/requirements.txt ./requirements.txt
+COPY py/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY scripting/ ./scripting/
+COPY py/ ./py/
 
 # Répertoires partagés (montés en volumes dans docker-compose.yml)
 RUN mkdir -p /app/logs /app/config
 
-ENV IDS_DEVICES_CONFIG=/app/scripting/devices.yaml \
+ENV IDS_DEVICES_CONFIG=/app/py/devices.yaml \
     IDS_ALERTS_LOG=/app/logs/alerts.jsonl \
     IDS_ACTIONS_LOG=/app/logs/first_response_actions.jsonl \
     IDS_ISOLATION_STATE=/app/config/isolated_devices.json \
@@ -43,4 +43,4 @@ ENV IDS_DEVICES_CONFIG=/app/scripting/devices.yaml \
 #   - lecture seule du reste du filesystem (read_only: true en compose)
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["python3", "scripting/first_response.py"]
+CMD ["python3", "py/ids.py", "--mqtt-broker", "localhost"]
