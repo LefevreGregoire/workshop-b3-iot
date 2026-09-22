@@ -2,6 +2,11 @@ from flask import Flask, jsonify, request, send_from_directory
 from datetime import datetime
 from pathlib import Path
 
+try:
+    from .isolation import handle_alert, is_isolated, restore_device as restore_isolated_device
+except ImportError:
+    from isolation import handle_alert, is_isolated, restore_device as restore_isolated_device
+
 app = Flask(
     __name__,
     static_folder="../web",
@@ -104,17 +109,23 @@ def receive_alert():
 
     event = add_log(
         device=device_id,
-        severity=data["severity"].upper(),
+        severity=str(data["severity"]).upper(),
         event_type=data["type"],
         message=data["message"],
         resolved=data.get("resolved", False)
     )
 
+    event["ip"] = data.get("ip", devices[device_id].get("ip"))
+    if not handle_alert(event):
+        return jsonify({
+            "error": "Isolation action failed",
+            "event": event
+        }), 502
 
-    # Automatic status update
-    if event["severity"] == "CRITICAL":
-
+    if event["severity"] == "CRITICAL" and not event["resolved"]:
         devices[device_id]["status"] = "ISOLATED"
+    elif event["resolved"] and event["ip"] and not is_isolated(event["ip"]):
+        devices[device_id]["status"] = "ONLINE"
 
 
     return jsonify({
@@ -162,6 +173,13 @@ def restore_device(device_id):
             "error": "Device not found"
         }), 404
 
+
+    device_ip = devices[device_id].get("ip")
+    if not device_ip or not restore_isolated_device(device_ip):
+        return jsonify({
+            "error": "Firewall restore failed",
+            "device": device_id
+        }), 502
 
     devices[device_id]["status"] = "ONLINE"
 
