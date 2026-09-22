@@ -13,26 +13,7 @@ app = Flask(
     static_url_path=""
 )
 
-devices = {
-    "VESSEL-01": {
-        "id": "VESSEL-01",
-        "ip": "192.168.1.10",
-        "status": "ONLINE",
-        "last_seen": None
-    },
-    "VESSEL-02": {
-        "id": "VESSEL-02",
-        "ip": "192.168.1.20",
-        "status": "ONLINE",
-        "last_seen": None
-    },
-    "VESSEL-03": {
-        "id": "VESSEL-03",
-        "ip": "192.168.1.30",
-        "status": "ISOLATED",
-        "last_seen": None
-    }
-}
+devices = {}
 logs = []
 
 def add_log(
