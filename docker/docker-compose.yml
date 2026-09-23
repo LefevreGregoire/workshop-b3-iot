@@ -1,8 +1,7 @@
 # docker-compose.yml
 # Orchestration complète de l'IDS inter-vaisseau :
 #   - mosquitto : bus de messages MQTT pour la communication device <-> center
-#   - ids-core  : classification des alertes + first-response (isolation réseau)
-#   - ids-web   : API + dashboard temps réel pour l'administrateur
+#   - ids-web   : API, dashboard, MQTT consumer, IDS and first-response
 #
 # Lancer depuis la racine du projet :
 #   docker compose -f docker/docker-compose.yml up -d --build
@@ -26,37 +25,6 @@ services:
       timeout: 5s
       retries: 3
 
-  ids-core:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.core
-    container_name: ids-core
-    restart: unless-stopped
-    depends_on:
-      mosquitto:
-        condition: service_healthy
-    environment:
-      # network_mode: host => pas de DNS interne docker-compose ici, on cible
-      # le port mosquitto publié sur l'hôte (voir "ports" du service mosquitto).
-      MQTT_HOST: localhost
-      MQTT_PORT: "1883"
-      IDS_LOG_LEVEL: INFO
-      IDS_POLL_INTERVAL_S: "2"
-      # IDS_DRY_RUN=1 en environnement de dev/CI sans droits root réels sur le hôte
-      IDS_DRY_RUN: "${IDS_DRY_RUN:-0}"
-    volumes:
-      - ../logs:/app/logs
-      - ../config:/app/config
-    # iptables doit pouvoir modifier les tables de filtrage réseau du hôte :
-    # capabilities minimales plutôt que privileged: true.
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    network_mode: host     # nécessaire pour que les règles iptables portent sur l'interface réelle du Center Device
-    networks: []
-
   ids-web:
     build:
       context: ..
@@ -64,10 +32,14 @@ services:
     container_name: ids-web
     restart: unless-stopped
     depends_on:
-      - mosquitto
+      mosquitto:
+        condition: service_healthy
     environment:
-      MQTT_HOST: mosquitto
+      MQTT_BROKER: mosquitto
       MQTT_PORT: "1883"
+      MQTT_TOPIC: "ids/devices/+/events"
+      IDS_RESPONSE_MODE: "${IDS_RESPONSE_MODE:-observe}"
+      IDS_DRY_RUN: "${IDS_DRY_RUN:-1}"
     volumes:
       - ../logs:/app/logs:ro
       - ../config:/app/config:ro
@@ -76,7 +48,7 @@ services:
     networks:
       - ids-net
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/status')"]
       interval: 30s
       timeout: 5s
       retries: 3

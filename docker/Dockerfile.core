@@ -1,6 +1,5 @@
 # Dockerfile.core
-# Image du service "ids-core" : scripts de classification d'alertes,
-# first-response (isolation réseau) et check de statut des devices.
+# Optional standalone image for the MQTT IDS detector.
 #
 # Nécessite les capabilities NET_ADMIN / NET_RAW au runtime pour piloter
 # iptables (voir docker-compose.yml). Image basée sur python:slim pour
@@ -11,7 +10,7 @@ FROM python:3.11-slim
 LABEL org.opencontainers.image.title="ids-core"
 LABEL org.opencontainers.image.description="Alert classification + automated first-response for the inter-vessel IDS"
 
-# iptables : nécessaire pour l'isolation réseau automatique (first_response.py)
+# iptables is only needed when the detector is later paired with isolation mode.
 # tini : reap correct des process + gestion propre des signaux (SIGTERM) en PID 1
 RUN apt-get update && apt-get install -y --no-install-recommends \
         iptables \
@@ -34,13 +33,8 @@ ENV IDS_DEVICES_CONFIG=/app/py/devices.yaml \
     IDS_ISOLATION_STATE=/app/config/isolated_devices.json \
     PYTHONUNBUFFERED=1
 
-# NOTE sécurité : ce service reste root à l'intérieur du conteneur car la
-# gestion iptables nécessite CAP_NET_ADMIN/CAP_NET_RAW en pratique de façon
-# fiable pour un process non-root (setcap sur le binaire serait une option
-# mais fragile selon la distro). Le compromis est documenté et compensé par :
-#   - cap_drop: ALL puis cap_add ciblé (NET_ADMIN, NET_RAW) dans docker-compose.yml
-#   - aucune exposition réseau entrante sur ce service
-#   - lecture seule du reste du filesystem (read_only: true en compose)
+# This image is not started by the default compose stack because py/server.py
+# already consumes MQTT and runs the IDS. Running both would duplicate alerts.
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["python3", "py/ids.py", "--mqtt-broker", "localhost"]
+CMD ["python3", "py/ids.py", "--mqtt-broker", "mosquitto", "--server-url", "http://ids-web:5000"]
