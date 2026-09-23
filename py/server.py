@@ -1280,6 +1280,42 @@ def restore_device(device_id):
 
 
 
+
+# ============================================================
+# SERVER TELEMETRY THREAD
+# ============================================================
+import threading
+import psutil
+import subprocess
+import time
+
+def get_wifi_signal():
+    try:
+        output = subprocess.check_output("iwconfig wlan0 | grep -i quality", shell=True).decode()
+        if "Signal level" in output: return output.split("Signal level=")[1].split(" ")[0]
+    except: pass
+    return "-100"
+
+def server_telemetry_thread():
+    while True:
+        try:
+            temp = 0.0
+            try:
+                with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+                    temp = float(f.read().strip()) / 1000.0
+            except: pass
+            payload = {
+                "cpu_usage": psutil.cpu_percent(interval=1),
+                "ram_usage": psutil.virtual_memory().percent,
+                "temp": temp,
+                "wifi_signal": get_wifi_signal(),
+                "timestamp": datetime.now().isoformat()
+            }
+            with data_lock:
+                telemetry_data["SERVER"] = payload
+        except Exception: pass
+        time.sleep(5)
+
 # ============================================================
 # API TELEMETRY
 # ============================================================
@@ -1408,6 +1444,7 @@ if __name__ == "__main__":
     # --------------------------------------------------------
 
     watchdog_thread = start_watchdog()
+    threading.Thread(target=server_telemetry_thread, daemon=True).start()
 
     # --------------------------------------------------------
     # Flask
