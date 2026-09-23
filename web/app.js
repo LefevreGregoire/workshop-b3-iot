@@ -497,8 +497,8 @@ const PAGE_CONFIG = {
         title: "Dashboard",
         subtitle: "Overview of the inter-vessel infrastructure."
     },
-    vessels: {
-        title: "Vessels",
+    devices: {
+        title: "Devices",
         subtitle: "Inspect connected devices and their recent activity."
     },
     map: {
@@ -544,7 +544,7 @@ function applyRoute() {
     const visible = {
         stats: page === "dashboard" || page === "status",
         alerts: page === "dashboard" || page === "alerts",
-        vessels: page === "dashboard" || page === "vessels" || page === "status",
+        vessels: page === "dashboard" || page === "devices" || page === "status",
         map: page === "map",
         logs: page === "dashboard" || page === "logs" || page === "events",
         settings: page === "settings"
@@ -552,7 +552,7 @@ function applyRoute() {
 
     document.querySelector(".stats-grid").hidden = !visible.stats;
     document.getElementById("alerts").hidden = !visible.alerts;
-    document.getElementById("vessels").hidden = !visible.vessels;
+    document.getElementById("devices").hidden = !visible.devices;
     document.getElementById("map-page").hidden = !visible.map;
     document.getElementById("logs").hidden = !visible.logs;
     document.getElementById("settings-page").hidden = !visible.settings;
@@ -644,7 +644,7 @@ function renderDevices() {
                     class="empty-state"
                 >
 
-                    No vessels registered.
+                    No devices registered.
 
                 </td>
 
@@ -1432,20 +1432,24 @@ function openRoomDetails(roomId) {
 /* DETAILS                                                     */
 /* ========================================================= */
 
+
 function openDeviceDetails(deviceId) {
-
     const device = devices.find(item => item.id === deviceId);
-
-    if (!device) {
-        return;
-    }
-
+    if (!device) return;
+    
     const deviceLogs = logs
         .filter(log => log.device === device.id)
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+    let telHtml = `
+        <div><dt>CPU Usage</dt><dd id="dd-cpu">--%</dd></div>
+        <div><dt>Memory</dt><dd id="dd-ram">--%</dd></div>
+        <div><dt>Temperature</dt><dd id="dd-temp">--°C</dd></div>
+        <div><dt>Wi-Fi Signal</dt><dd id="dd-wifi">-- dBm</dd></div>
+    `;
 
     openDetails(
-        "Vessel",
+        "Device",
         device.id,
         `
             <div class="detail-summary ${getStatusClass(device.status)}">
@@ -1453,17 +1457,49 @@ function openDeviceDetails(deviceId) {
                 <strong>${escapeHTML(device.status || "UNKNOWN")}</strong>
                 <span>${deviceLogs.filter(log => !log.resolved).length} active event(s)</span>
             </div>
+            
+            <h3 class="detail-section-title">Telemetry</h3>
+            <dl class="detail-list telemetry-list">
+                ${telHtml}
+            </dl>
+            
+            <h3 class="detail-section-title">Device Info</h3>
             <dl class="detail-list">
                 <div><dt>Device ID</dt><dd>${escapeHTML(device.id)}</dd></div>
                 <div><dt>IP address</dt><dd>${escapeHTML(device.ip || "Unknown")}</dd></div>
                 <div><dt>Last seen</dt><dd>${escapeHTML(formatTimestamp(device.last_seen))}</dd></div>
                 <div><dt>Recorded events</dt><dd>${deviceLogs.length}</dd></div>
             </dl>
+            
+            <h3 class="detail-section-title">Remote Override</h3>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom: 20px;">
+                <button onclick="remoteAction('${device.id}', 'door')" class="modern-btn">Toggle Door Lock</button>
+                <button onclick="remoteAction('${device.id}', 'unban')" class="modern-btn" style="background:#fff; color:#111; border:1px solid #ccc;">Unban IP / Restore Firewall</button>
+            </div>
+            
             <h3 class="detail-section-title">Recent activity</h3>
             ${renderDetailLogList(deviceLogs.slice(0, 5))}
         `
     );
+    
+    // Auto-update telemetry in drawer
+    window.currentDrawerDevice = device.id;
 }
+
+window.remoteAction = function(deviceId, action) {
+    if(action === 'door') {
+        fetch('/api/command/door/' + deviceId, {
+            method: 'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({action: 'TOGGLE'})
+        });
+        showToast('Commande de porte envoyée à ' + deviceId, 'success');
+    } else if(action === 'unban') {
+        fetch('/api/devices/' + deviceId + '/restore', {method: 'POST'});
+        showToast('Tentative de restauration du pare-feu sur ' + deviceId, 'info');
+    }
+};
+
 
 
 function openLogDetails(log) {
@@ -1868,13 +1904,12 @@ const initModernUI = () => {
             showToast('Scan de sécurité en cours...', 'info');
         });
         document.getElementById('btn-lockdown').addEventListener('click', () => {
-            if(confirm("Confirmer Alarme Rouge Globale ?")) {
-                fetch('/api/command/lockdown', {method: 'POST'});
-                showToast('🚨 Lockdown initié ! Alarme Rouge !', 'error');
-            }
+            fetch('/api/command/lockdown', {method: 'POST'});
+            showToast('🚨 ALARME ROUGE DÉCLENCHÉE !', 'error');
         });
     }
 
+    
     // 2. Telemetry Loop
     setInterval(async () => {
         try {
@@ -1883,13 +1918,29 @@ const initModernUI = () => {
             const devices = Object.keys(data);
             if(devices.length > 0) {
                 const tel = data[devices[0]];
-                document.getElementById('tel-cpu').innerText = tel.cpu_usage + '%';
-                document.getElementById('tel-ram').innerText = tel.ram_usage + '%';
-                document.getElementById('tel-temp').innerText = tel.temp.toFixed(1) + '°C';
-                document.getElementById('tel-wifi').innerText = tel.wifi_signal + ' dBm';
+                const cpu = document.getElementById('tel-cpu');
+                if(cpu) {
+                    cpu.innerText = tel.cpu_usage + '%';
+                    document.getElementById('tel-ram').innerText = tel.ram_usage + '%';
+                    document.getElementById('tel-temp').innerText = tel.temp.toFixed(1) + '°C';
+                    document.getElementById('tel-wifi').innerText = tel.wifi_signal + ' dBm';
+                }
+            }
+            
+            // If drawer is open on a specific device
+            if(window.currentDrawerDevice && data[window.currentDrawerDevice]) {
+                const dTel = data[window.currentDrawerDevice];
+                const dCpu = document.getElementById('dd-cpu');
+                if(dCpu) {
+                    dCpu.innerText = dTel.cpu_usage + '%';
+                    document.getElementById('dd-ram').innerText = dTel.ram_usage + '%';
+                    document.getElementById('dd-temp').innerText = dTel.temp.toFixed(1) + '°C';
+                    document.getElementById('dd-wifi').innerText = dTel.wifi_signal + ' dBm';
+                }
             }
         } catch (e) {}
     }, 2000);
+
 
     // 3. Inject buttons into detail drawer dynamically when opened
     document.addEventListener('click', (e) => {
