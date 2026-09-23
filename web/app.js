@@ -58,6 +58,8 @@ document.addEventListener(
 
         setupEventListeners();
 
+        window.addEventListener("hashchange", applyRoute);
+
         loadDashboard();
 
         setInterval(
@@ -109,6 +111,99 @@ function setupEventListeners() {
             "change",
             renderLogs
         );
+
+    document
+        .getElementById("devices-container")
+        .addEventListener("click", event => {
+            const row = event.target.closest("tr[data-device-id]");
+            if (row) {
+                openDeviceDetails(row.dataset.deviceId);
+            }
+        });
+
+    document
+        .getElementById("devices-container")
+        .addEventListener("keydown", event => {
+            if (event.key !== "Enter" && event.key !== " ") {
+                return;
+            }
+            const row = event.target.closest("tr[data-device-id]");
+            if (row) {
+                event.preventDefault();
+                openDeviceDetails(row.dataset.deviceId);
+            }
+        });
+
+    document
+        .getElementById("logs-container")
+        .addEventListener("click", event => {
+            const row = event.target.closest("tr[data-log-index]");
+            if (row) {
+                openLogDetails(logs[Number(row.dataset.logIndex)]);
+            }
+        });
+
+    document
+        .getElementById("logs-container")
+        .addEventListener("keydown", event => {
+            if (event.key !== "Enter" && event.key !== " ") {
+                return;
+            }
+            const row = event.target.closest("tr[data-log-index]");
+            if (row) {
+                event.preventDefault();
+                openLogDetails(logs[Number(row.dataset.logIndex)]);
+            }
+        });
+
+    document
+        .getElementById("critical-container")
+        .addEventListener("click", event => {
+            const incident = event.target.closest("[data-log-index]");
+            if (incident) {
+                openLogDetails(logs[Number(incident.dataset.logIndex)]);
+            }
+        });
+
+    document
+        .getElementById("critical-container")
+        .addEventListener("keydown", event => {
+            if (event.key !== "Enter" && event.key !== " ") {
+                return;
+            }
+            const incident = event.target.closest("[data-log-index]");
+            if (incident) {
+                event.preventDefault();
+                openLogDetails(logs[Number(incident.dataset.logIndex)]);
+            }
+        });
+
+    document
+        .getElementById("detail-content")
+        .addEventListener("click", event => {
+            const item = event.target.closest("button[data-log-index]");
+            if (item) {
+                openLogDetails(logs[Number(item.dataset.logIndex)]);
+            }
+        });
+
+    document
+        .getElementById("detail-close")
+        .addEventListener("click", closeDetails);
+
+    document
+        .getElementById("detail-backdrop")
+        .addEventListener("click", event => {
+            if (event.target.id === "detail-backdrop") {
+                closeDetails();
+            }
+        });
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            closeDetails();
+        }
+    });
 
 }
 
@@ -196,6 +291,73 @@ function renderDashboard() {
 
     renderLogs();
 
+        applyRoute();
+
+}
+
+
+/* ========================================================= */
+/* ROUTING                                                     */
+/* ========================================================= */
+
+const PAGE_CONFIG = {
+    dashboard: {
+        title: "Dashboard",
+        subtitle: "Overview of the inter-vessel infrastructure."
+    },
+    vessels: {
+        title: "Vessels",
+        subtitle: "Inspect connected devices and their recent activity."
+    },
+    alerts: {
+        title: "Alerts",
+        subtitle: "Review unresolved incidents requiring attention."
+    },
+    logs: {
+        title: "Logs",
+        subtitle: "Search and inspect security and infrastructure events."
+    },
+    events: {
+        title: "Events",
+        subtitle: "Review the complete event stream received by the center."
+    },
+    status: {
+        title: "System status",
+        subtitle: "Monitor the center and connected vessel availability."
+    },
+    settings: {
+        title: "Settings",
+        subtitle: "Review the current dashboard and response configuration."
+    }
+};
+
+
+function applyRoute() {
+
+    const requestedPage = window.location.hash.slice(1).toLowerCase();
+    const page = PAGE_CONFIG[requestedPage] ? requestedPage : "dashboard";
+    const config = PAGE_CONFIG[page];
+
+    document.getElementById("page-title").textContent = config.title;
+    document.getElementById("page-subtitle").textContent = config.subtitle;
+
+    document.querySelectorAll(".nav-item").forEach(item => {
+        item.classList.toggle("active", item.getAttribute("href") === `#${page}`);
+    });
+
+    const visible = {
+        stats: page === "dashboard" || page === "status",
+        alerts: page === "dashboard" || page === "alerts",
+        vessels: page === "dashboard" || page === "vessels" || page === "status",
+        logs: page === "dashboard" || page === "logs" || page === "events",
+        settings: page === "settings"
+    };
+
+    document.querySelector(".stats-grid").hidden = !visible.stats;
+    document.getElementById("alerts").hidden = !visible.alerts;
+    document.getElementById("vessels").hidden = !visible.vessels;
+    document.getElementById("logs").hidden = !visible.logs;
+    document.getElementById("settings-page").hidden = !visible.settings;
 }
 
 
@@ -363,6 +525,11 @@ function renderDevices() {
 
             `;
 
+            row.dataset.deviceId = device.id;
+            row.tabIndex = 0;
+            row.setAttribute("role", "button");
+            row.setAttribute("aria-label", `View details for ${device.id}`);
+
 
             container.appendChild(row);
 
@@ -434,7 +601,11 @@ function renderCriticalIncidents() {
 
 
                 incident.className =
-                    "incident";
+                    "incident interactive-row";
+                incident.dataset.logIndex = logs.indexOf(log);
+                incident.tabIndex = 0;
+                incident.setAttribute("role", "button");
+                incident.setAttribute("aria-label", `View incident ${log.type}`);
 
 
                 incident.innerHTML = `
@@ -769,6 +940,12 @@ function renderLogs() {
             const row =
                 document.createElement("tr");
 
+            row.className = "interactive-row";
+            row.dataset.logIndex = logs.indexOf(log);
+            row.tabIndex = 0;
+            row.setAttribute("role", "button");
+            row.setAttribute("aria-label", `View log ${log.type}`);
+
 
             const severityClass =
                 getSeverityClass(
@@ -863,6 +1040,120 @@ function renderLogs() {
         }
     );
 
+}
+
+
+/* ========================================================= */
+/* DETAILS                                                     */
+/* ========================================================= */
+
+function openDeviceDetails(deviceId) {
+
+    const device = devices.find(item => item.id === deviceId);
+
+    if (!device) {
+        return;
+    }
+
+    const deviceLogs = logs
+        .filter(log => log.device === device.id)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    openDetails(
+        "Vessel",
+        device.id,
+        `
+            <div class="detail-summary ${getStatusClass(device.status)}">
+                <span class="status-dot ${getStatusClass(device.status)}"></span>
+                <strong>${escapeHTML(device.status || "UNKNOWN")}</strong>
+                <span>${deviceLogs.filter(log => !log.resolved).length} active event(s)</span>
+            </div>
+            <dl class="detail-list">
+                <div><dt>Device ID</dt><dd>${escapeHTML(device.id)}</dd></div>
+                <div><dt>IP address</dt><dd>${escapeHTML(device.ip || "Unknown")}</dd></div>
+                <div><dt>Last seen</dt><dd>${escapeHTML(formatTimestamp(device.last_seen))}</dd></div>
+                <div><dt>Recorded events</dt><dd>${deviceLogs.length}</dd></div>
+            </dl>
+            <h3 class="detail-section-title">Recent activity</h3>
+            ${renderDetailLogList(deviceLogs.slice(0, 5))}
+        `
+    );
+}
+
+
+function openLogDetails(log) {
+
+    if (!log) {
+        return;
+    }
+
+    openDetails(
+        "Security log",
+        log.type || "Event",
+        `
+            <div class="detail-summary">
+                <span class="badge ${getSeverityClass(log.severity)}">${escapeHTML(log.severity || "INFO")}</span>
+                <strong>${escapeHTML(log.resolved ? "Resolved" : "Active")}</strong>
+            </div>
+            <dl class="detail-list">
+                <div><dt>Device</dt><dd>${escapeHTML(log.device || "Unknown")}</dd></div>
+                <div><dt>Timestamp</dt><dd>${escapeHTML(formatTimestamp(log.timestamp))}</dd></div>
+                <div><dt>IP address</dt><dd>${escapeHTML(log.ip || "Unknown")}</dd></div>
+                <div><dt>Event type</dt><dd>${escapeHTML(log.type || "Unknown")}</dd></div>
+                <div><dt>Status</dt><dd>${escapeHTML(log.resolved ? "RESOLVED" : "ACTIVE")}</dd></div>
+            </dl>
+            <h3 class="detail-section-title">Message</h3>
+            <p class="detail-message">${escapeHTML(log.message || "No message supplied.")}</p>
+        `
+    );
+}
+
+
+function renderDetailLogList(items) {
+
+    if (!items.length) {
+        return `<p class="detail-empty">No recorded activity.</p>`;
+    }
+
+    return `
+        <div class="detail-log-list">
+            ${items.map(log => `
+                <button class="detail-log-item" type="button" data-log-index="${logs.indexOf(log)}">
+                    <span>
+                        <strong>${escapeHTML(log.type || "Event")}</strong>
+                        <small>${escapeHTML(formatTimestamp(log.timestamp))}</small>
+                    </span>
+                    <span class="badge ${getSeverityClass(log.severity)}">${escapeHTML(log.severity || "INFO")}</span>
+                </button>
+            `).join("")}
+        </div>
+    `;
+}
+
+
+function openDetails(kicker, title, content) {
+
+    document.getElementById("detail-kicker").textContent = kicker;
+    document.getElementById("detail-title").textContent = title;
+    document.getElementById("detail-content").innerHTML = content;
+
+    const backdrop = document.getElementById("detail-backdrop");
+    backdrop.hidden = false;
+    document.body.classList.add("drawer-open");
+    document.getElementById("detail-close").focus();
+}
+
+
+function closeDetails() {
+
+    const backdrop = document.getElementById("detail-backdrop");
+
+    if (backdrop.hidden) {
+        return;
+    }
+
+    backdrop.hidden = true;
+    document.body.classList.remove("drawer-open");
 }
 
 

@@ -308,11 +308,11 @@
 
             <div>
 
-                <h1>
+                <h1 id="page-title">
                     Dashboard
                 </h1>
 
-                <p>
+                <p id="page-subtitle">
                     Overview of the inter-vessel infrastructure.
                 </p>
 
@@ -429,6 +429,47 @@
                 </div>
 
             </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- SETTINGS                                           -->
+        <!-- ================================================= -->
+
+        <section
+            id="settings-page"
+            class="panel"
+            hidden
+        >
+
+            <div class="panel-header">
+
+                <div>
+                    <h2>System configuration</h2>
+                    <p>Current runtime configuration exposed by the dashboard.</p>
+                </div>
+
+            </div>
+
+            <dl class="settings-list">
+                <div>
+                    <dt>API endpoint</dt>
+                    <dd>/api</dd>
+                </div>
+                <div>
+                    <dt>Refresh interval</dt>
+                    <dd>2 seconds</dd>
+                </div>
+                <div>
+                    <dt>Automatic response</dt>
+                    <dd>Configured by the server</dd>
+                </div>
+                <div>
+                    <dt>Data source</dt>
+                    <dd>Center server</dd>
+                </div>
+            </dl>
 
         </section>
 
@@ -709,6 +750,40 @@
 
 
     </main>
+
+</div>
+
+
+<div
+    id="detail-backdrop"
+    class="detail-backdrop"
+    hidden
+>
+
+    <aside
+        class="detail-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="detail-title"
+    >
+
+        <div class="detail-header">
+            <div>
+                <span id="detail-kicker" class="detail-kicker">Detail</span>
+                <h2 id="detail-title">Details</h2>
+            </div>
+            <button
+                id="detail-close"
+                class="icon-button"
+                type="button"
+                aria-label="Close details"
+                title="Close details"
+            >×</button>
+        </div>
+
+        <div id="detail-content" class="detail-content"></div>
+
+    </aside>
 
 </div>
 
