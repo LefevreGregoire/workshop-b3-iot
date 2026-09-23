@@ -29,6 +29,19 @@
     --shadow:
         0 1px 2px rgba(0, 0, 0, 0.05);
 
+    /* Ship map - dark "spaceship" theme */
+    --map-bg: #050810;
+    --map-bg-glow: radial-gradient(circle at 50% 12%, #101a28 0%, #070b13 55%, #03050a 100%);
+    --map-panel-border: rgba(79, 209, 255, 0.25);
+    --map-hull: #4fd1ff;
+    --map-room-fill: #0d141f;
+    --map-room-border: rgba(79, 209, 255, 0.35);
+    --map-corridor-fill: #0a1119;
+    --map-label: #e7f6ff;
+    --map-ok: #2ee6a6;
+    --map-warn: #ffb020;
+    --map-critical: #ff3b5c;
+
 }
 
 
@@ -1365,6 +1378,297 @@ tbody tr:last-child td {
     color: var(--text);
     font-size: 12px;
     text-align: right;
+
+}
+
+
+/* ========================================================= */
+/* SHIP MAP                                                    */
+/* ========================================================= */
+
+.map-toolbar {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 15px;
+    background: #f9fafc;
+    border-bottom: 1px solid #eeeeee;
+
+}
+
+
+.map-tabs {
+
+    display: flex;
+    gap: 8px;
+
+}
+
+
+.map-tab {
+
+    height: 32px;
+    padding: 0 16px;
+    background: #ffffff;
+    color: #555555;
+    border: 1px solid #cccccc;
+    border-radius: 3px;
+    font-size: 13px;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        border-color 0.15s ease;
+
+}
+
+
+.map-tab:hover {
+
+    background: #f5f5f5;
+
+}
+
+
+.map-tab.active {
+
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+
+}
+
+
+.map-legend {
+
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12px;
+    color: #666666;
+
+}
+
+
+.map-legend-item {
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+}
+
+
+.map-legend-dot {
+
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+
+}
+
+
+.map-legend-dot.ok { background: var(--map-ok); }
+.map-legend-dot.warn { background: var(--map-warn); }
+.map-legend-dot.critical { background: var(--map-critical); }
+
+
+.map-legend-dash {
+
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 1.5px dashed #999999;
+    border-radius: 2px;
+
+}
+
+
+.map-canvas {
+
+    padding: 28px;
+    display: flex;
+    justify-content: center;
+
+    background: var(--map-bg-glow);
+    background-color: var(--map-bg);
+    border: 1px solid var(--map-panel-border);
+    border-radius: 6px;
+    box-shadow:
+        inset 0 0 60px rgba(79, 209, 255, 0.06),
+        0 0 30px rgba(0, 0, 0, 0.4);
+
+}
+
+
+.map-floor {
+
+    max-width: 560px;
+    width: 100%;
+
+}
+
+
+.map-svg {
+
+    width: 100%;
+    height: auto;
+    display: block;
+
+}
+
+
+.map-hull {
+
+    fill: none;
+    stroke: var(--map-hull);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 6px rgba(79, 209, 255, 0.55));
+
+}
+
+
+.map-room {
+
+    cursor: pointer;
+
+}
+
+
+.map-room:hover .map-room-shape,
+.map-room:focus-visible .map-room-shape {
+
+    stroke: var(--map-hull);
+    filter: drop-shadow(0 0 5px rgba(79, 209, 255, 0.45));
+
+}
+
+
+.map-room:focus-visible {
+
+    outline: none;
+
+}
+
+
+.map-room-shape {
+
+    fill: var(--map-room-fill);
+    stroke: var(--map-room-border);
+    stroke-width: 1.5;
+    transition:
+        stroke 0.15s ease,
+        filter 0.15s ease;
+
+}
+
+
+.map-bay-shape {
+
+    fill: rgba(79, 209, 255, 0.03);
+    stroke: var(--map-room-border);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+
+}
+
+
+.map-corridor-shape {
+
+    fill: var(--map-corridor-fill);
+    stroke: var(--map-room-border);
+    stroke-width: 1.5;
+
+}
+
+
+.map-room-label {
+
+    fill: var(--map-label);
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    letter-spacing: 0.3px;
+    dominant-baseline: middle;
+
+}
+
+
+.map-room-label.small {
+
+    font-size: 13px;
+
+}
+
+
+.map-pill {
+
+    stroke: rgba(0, 0, 0, 0.35);
+    stroke-width: 1;
+    cursor: pointer;
+    transition:
+        filter 0.15s ease,
+        opacity 0.15s ease;
+
+}
+
+
+.map-pill:hover {
+
+    filter:
+        brightness(1.25)
+        drop-shadow(0 0 6px currentColor);
+
+}
+
+
+.map-pill:focus-visible {
+
+    outline: 2px solid var(--map-hull);
+    outline-offset: 2px;
+
+}
+
+
+.map-pill-ok {
+    fill: var(--map-ok);
+    color: var(--map-ok);
+    filter: drop-shadow(0 0 4px var(--map-ok));
+}
+
+.map-pill-warn {
+    fill: var(--map-warn);
+    color: var(--map-warn);
+    filter: drop-shadow(0 0 4px var(--map-warn));
+}
+
+.map-pill-critical {
+    fill: var(--map-critical);
+    color: var(--map-critical);
+    filter: drop-shadow(0 0 5px var(--map-critical));
+}
+
+
+/* "Plan" mode: hide sensor indicators, keep the bare layout */
+
+.map-canvas.hide-sensors .map-pill {
+
+    display: none;
+
+}
+
+
+@media (max-width: 650px) {
+
+    .map-toolbar {
+
+        flex-direction: column;
+        align-items: flex-start;
+
+    }
 
 }
 

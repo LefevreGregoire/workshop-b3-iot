@@ -133,6 +133,22 @@
 
             </a>
 
+
+            <a
+                href="#map"
+                class="nav-item"
+            >
+
+                <span class="nav-icon">
+                    ▦
+                </span>
+
+                <span class="nav-label">
+                    Map
+                </span>
+
+            </a>
+
         </div>
 
 
@@ -582,6 +598,195 @@
                     </tbody>
 
                 </table>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- SHIP MAP                                           -->
+        <!-- ================================================= -->
+
+        <section
+            id="map-page"
+            class="panel"
+            hidden
+        >
+
+            <div class="panel-header">
+
+                <div>
+
+                    <h2>
+                        Ship map
+                    </h2>
+
+                    <p>
+                        Single-deck layout. Switch between the bare plan and
+                        the sensor overlay - sensor values are placeholders
+                        until real sensors are wired in.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="map-toolbar">
+
+                <div class="map-tabs">
+
+                    <button
+                        type="button"
+                        class="map-tab"
+                        data-mode="plan"
+                    >
+                        Plan
+                    </button>
+
+                    <button
+                        type="button"
+                        class="map-tab active"
+                        data-mode="sensors"
+                    >
+                        Avec capteurs
+                    </button>
+
+                </div>
+
+
+                <div class="map-legend">
+
+                    <span class="map-legend-item">
+                        <span class="map-legend-dot ok"></span>
+                        Porte niveau 1
+                    </span>
+
+                    <span class="map-legend-item">
+                        <span class="map-legend-dot warn"></span>
+                        Porte niveau 2
+                    </span>
+
+                    <span class="map-legend-item">
+                        <span class="map-legend-dot critical"></span>
+                        Porte niveau 3
+                    </span>
+
+                    <span class="map-legend-item">
+                        <span class="map-legend-dash"></span>
+                        Place de parking
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="map-canvas">
+
+                <div class="map-floor">
+
+                    <svg
+                        class="map-svg"
+                        viewBox="0 0 700 1010"
+                        role="img"
+                        aria-label="Ship deck plan"
+                    >
+
+                        <!-- Hull outline -->
+                        <polygon class="map-hull" points="350,15 560,175 615,300 620,900 580,950 120,950 80,900 85,300 140,175" />
+
+                        <!-- Corridor -->
+                        <rect class="map-corridor-shape" x="305" y="175" width="90" height="555" rx="16" />
+
+                        <!-- Poste de pilotage -->
+                        <g class="map-room" data-room="pilot" tabindex="0" role="button" aria-label="Poste de pilotage details">
+                            <rect class="map-room-shape" x="255" y="90" width="190" height="85" rx="16" />
+                            <text class="map-room-label" x="350" y="138" text-anchor="middle">Poste de pilotage</text>
+                        </g>
+
+                        <!-- Salle des réacteurs / Armurerie -->
+                        <g class="map-room" data-room="reactor" tabindex="0" role="button" aria-label="Salle des réacteurs details">
+                            <rect class="map-room-shape" x="80" y="190" width="225" height="120" rx="16" />
+                            <text class="map-room-label small" x="192" y="255" text-anchor="middle">Salle des réacteurs</text>
+                        </g>
+
+                        <g class="map-room" data-room="armory" tabindex="0" role="button" aria-label="Armurerie details">
+                            <rect class="map-room-shape" x="395" y="190" width="225" height="120" rx="16" />
+                            <text class="map-room-label" x="507" y="255" text-anchor="middle">Armurerie</text>
+                        </g>
+
+                        <!-- Infirmerie / Salle des serveurs -->
+                        <g class="map-room" data-room="infirmary" tabindex="0" role="button" aria-label="Infirmerie details">
+                            <rect class="map-room-shape" x="80" y="325" width="225" height="120" rx="16" />
+                            <text class="map-room-label" x="192" y="390" text-anchor="middle">Infirmerie</text>
+                        </g>
+
+                        <g class="map-room" data-room="server-room" tabindex="0" role="button" aria-label="Salle des serveurs details">
+                            <rect class="map-room-shape" x="395" y="325" width="225" height="120" rx="16" />
+                            <text class="map-room-label small" x="507" y="377" text-anchor="middle">Salle des serveurs</text>
+                            <text class="map-room-label small" x="507" y="397" text-anchor="middle">et communications</text>
+                        </g>
+
+                        <!-- Quartiers A / B -->
+                        <g class="map-room" data-room="quarters-a" tabindex="0" role="button" aria-label="Quartiers A details">
+                            <rect class="map-room-shape" x="80" y="460" width="225" height="120" rx="16" />
+                            <text class="map-room-label" x="192" y="525" text-anchor="middle">Quartiers A</text>
+                        </g>
+
+                        <g class="map-room" data-room="quarters-b" tabindex="0" role="button" aria-label="Quartiers B details">
+                            <rect class="map-room-shape" x="395" y="460" width="225" height="120" rx="16" />
+                            <text class="map-room-label" x="507" y="525" text-anchor="middle">Quartiers B</text>
+                        </g>
+
+                        <!-- Quartiers C / D -->
+                        <g class="map-room" data-room="quarters-c" tabindex="0" role="button" aria-label="Quartiers C details">
+                            <rect class="map-room-shape" x="80" y="595" width="225" height="120" rx="16" />
+                            <text class="map-room-label" x="192" y="660" text-anchor="middle">Quartiers C</text>
+                        </g>
+
+                        <g class="map-room" data-room="quarters-d" tabindex="0" role="button" aria-label="Quartiers D details">
+                            <rect class="map-room-shape" x="395" y="595" width="225" height="120" rx="16" />
+                            <text class="map-room-label" x="507" y="660" text-anchor="middle">Quartiers D</text>
+                        </g>
+
+                        <!-- Hangar / garage -->
+                        <g class="map-room" data-room="hangar" tabindex="0" role="button" aria-label="Hangar / garage details">
+                            <rect class="map-room-shape" x="80" y="730" width="540" height="190" rx="16" />
+                            <text class="map-room-label" x="100" y="758" text-anchor="start">Hangar / garage</text>
+                        </g>
+
+                        <rect class="map-bay-shape" x="125" y="790" width="54" height="100" rx="8" />
+                        <rect class="map-bay-shape" x="190" y="790" width="54" height="100" rx="8" />
+                        <rect class="map-bay-shape" x="255" y="790" width="54" height="100" rx="8" />
+                        <rect class="map-bay-shape" x="320" y="790" width="54" height="100" rx="8" />
+                        <rect class="map-bay-shape" x="385" y="790" width="54" height="100" rx="8" />
+                        <rect class="map-bay-shape" x="450" y="790" width="54" height="100" rx="8" />
+                        <rect class="map-bay-shape" x="515" y="790" width="54" height="100" rx="8" />
+
+                        <!-- Entrée / Sortie -->
+                        <text class="map-room-label small" x="175" y="980" text-anchor="middle">↑ Entrée</text>
+                        <text class="map-room-label small" x="525" y="980" text-anchor="middle">Sortie ↓</text>
+
+                        <!-- Sensors (doors) -->
+                        <rect class="map-pill" data-sensor="pilot-door" x="325" y="166" width="50" height="18" rx="9" tabindex="0" role="button" aria-label="Pilot deck door sensor" />
+                        <rect class="map-pill" data-sensor="reactor-door" x="296" y="228" width="18" height="44" rx="9" tabindex="0" role="button" aria-label="Reactor room door sensor" />
+                        <rect class="map-pill" data-sensor="armory-door" x="386" y="228" width="18" height="44" rx="9" tabindex="0" role="button" aria-label="Armory door sensor" />
+                        <rect class="map-pill" data-sensor="infirmary-door" x="296" y="363" width="18" height="44" rx="9" tabindex="0" role="button" aria-label="Infirmary door sensor" />
+                        <rect class="map-pill" data-sensor="server-door" x="386" y="363" width="18" height="44" rx="9" tabindex="0" role="button" aria-label="Server room door sensor" />
+                        <rect class="map-pill" data-sensor="elevator" x="325" y="443" width="50" height="18" rx="9" tabindex="0" role="button" aria-label="Elevator sensor" />
+                        <rect class="map-pill" data-sensor="quarters-a-door" x="296" y="498" width="18" height="44" rx="9" tabindex="0" role="button" aria-label="Quarters A door sensor" />
+                        <rect class="map-pill" data-sensor="quarters-b-door" x="386" y="498" width="18" height="44" rx="9" tabindex="0" role="button" aria-label="Quarters B door sensor" />
+                        <rect class="map-pill" data-sensor="quarters-c-door" x="296" y="633" width="18" height="44" rx="9" tabindex="0" role="button" aria-label="Quarters C door sensor" />
+                        <rect class="map-pill" data-sensor="quarters-d-door" x="386" y="633" width="18" height="44" rx="9" tabindex="0" role="button" aria-label="Quarters D door sensor" />
+                        <rect class="map-pill" data-sensor="hangar-door" x="325" y="714" width="50" height="18" rx="9" tabindex="0" role="button" aria-label="Hangar door sensor" />
+                        <rect class="map-pill" data-sensor="entry-gate" x="140" y="941" width="70" height="18" rx="9" tabindex="0" role="button" aria-label="Entry gate sensor" />
+                        <rect class="map-pill" data-sensor="exit-gate" x="490" y="941" width="70" height="18" rx="9" tabindex="0" role="button" aria-label="Exit gate sensor" />
+
+                    </svg>
+
+                </div>
 
             </div>
 

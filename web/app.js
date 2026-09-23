@@ -42,6 +42,145 @@ let logs = [];
 
 
 /* ========================================================= */
+/* SHIP MAP                                                    */
+/* ========================================================= */
+
+/*
+ * TODO: real sensors are not wired in yet, and the shape of the
+ * data they will send back is not decided. Until then, this is
+ * a static placeholder so the map has something to show. Replace
+ * SHIP_SENSORS with a real fetch() once the sensor payload format
+ * is defined - the rendering code below does not need to change,
+ * only where this object's values come from.
+ *
+ * Level values: 1 (green), 2 (orange), 3 (red) - see the map legend.
+ */
+const SHIP_SENSORS = {
+    "pilot-door": 3,
+    "reactor-door": 3,
+    "armory-door": 3,
+    "infirmary-door": 1,
+    "server-door": 2,
+    "elevator": 1,
+    "quarters-a-door": 1,
+    "quarters-b-door": 1,
+    "quarters-c-door": 1,
+    "quarters-d-door": 1,
+    "hangar-door": 2,
+    "entry-gate": 2,
+    "exit-gate": 2
+};
+
+const SHIP_SENSOR_LABELS = {
+    "pilot-door": "Poste de pilotage — Porte",
+    "reactor-door": "Salle des réacteurs — Porte",
+    "armory-door": "Armurerie — Porte",
+    "infirmary-door": "Infirmerie — Porte",
+    "server-door": "Salle des serveurs — Porte",
+    "elevator": "Ascenseur",
+    "quarters-a-door": "Quartiers A — Porte",
+    "quarters-b-door": "Quartiers B — Porte",
+    "quarters-c-door": "Quartiers C — Porte",
+    "quarters-d-door": "Quartiers D — Porte",
+    "hangar-door": "Hangar / garage — Porte",
+    "entry-gate": "Entrée — Portail",
+    "exit-gate": "Sortie — Portail"
+};
+
+// "plan" hides the sensor pills, "sensors" shows them
+let currentMapMode = "sensors";
+
+/*
+ * Room details shown when clicking a room on the map. Staff names are
+ * invented for the demo - replace with a real crew roster if one
+ * becomes available.
+ */
+const SHIP_ROOMS = {
+    "pilot": {
+        label: "Poste de pilotage",
+        purpose: "Commande et navigation du vaisseau. Accès restreint à l'équipe de pont.",
+        staff: [
+            { name: "Capitaine Elena Voss", role: "Commandant de bord" },
+            { name: "Marcus Reyes", role: "Officier de navigation" }
+        ],
+        sensors: ["pilot-door"]
+    },
+    "reactor": {
+        label: "Salle des réacteurs",
+        purpose: "Production et régulation de l'énergie du vaisseau. Zone à haut risque, accès très limité.",
+        staff: [
+            { name: "Tomás Ferreira", role: "Chef mécanicien" }
+        ],
+        sensors: ["reactor-door"]
+    },
+    "armory": {
+        label: "Armurerie",
+        purpose: "Stockage et entretien de l'équipement de défense du vaisseau.",
+        staff: [
+            { name: "Sgt. Dana Kowalski", role: "Responsable armement" }
+        ],
+        sensors: ["armory-door"]
+    },
+    "infirmary": {
+        label: "Infirmerie",
+        purpose: "Soins médicaux de l'équipage et gestion des urgences sanitaires.",
+        staff: [
+            { name: "Dr. Amara N'Diaye", role: "Médecin de bord" }
+        ],
+        sensors: ["infirmary-door"]
+    },
+    "server-room": {
+        label: "Salle des serveurs et communications",
+        purpose: "Infrastructure réseau, communications inter-vaisseaux et stockage des données de bord.",
+        staff: [
+            { name: "Priya Anand", role: "Ingénieure réseau" }
+        ],
+        sensors: ["server-door"]
+    },
+    "quarters-a": {
+        label: "Quartiers A",
+        purpose: "Logement de l'équipe de pont.",
+        staff: [
+            { name: "Léa Bertrand", role: "Officier de quart" }
+        ],
+        sensors: ["quarters-a-door"]
+    },
+    "quarters-b": {
+        label: "Quartiers B",
+        purpose: "Logement de l'équipe d'ingénierie.",
+        staff: [
+            { name: "Omar Haddad", role: "Technicien systèmes" }
+        ],
+        sensors: ["quarters-b-door"]
+    },
+    "quarters-c": {
+        label: "Quartiers C",
+        purpose: "Logement de l'équipe médicale et sécurité.",
+        staff: [
+            { name: "Ingrid Solberg", role: "Infirmière de bord" }
+        ],
+        sensors: ["quarters-c-door"]
+    },
+    "quarters-d": {
+        label: "Quartiers D",
+        purpose: "Logement de l'équipe logistique.",
+        staff: [
+            { name: "Kenji Watanabe", role: "Responsable cargaison" }
+        ],
+        sensors: ["quarters-d-door"]
+    },
+    "hangar": {
+        label: "Hangar / garage",
+        purpose: "Stockage et maintenance des véhicules d'exploration. 7 places disponibles.",
+        staff: [
+            { name: "Jonas Lindqvist", role: "Responsable hangar et véhicules" }
+        ],
+        sensors: ["hangar-door", "entry-gate", "exit-gate"]
+    }
+};
+
+
+/* ========================================================= */
 /* CONFIGURATION                                               */
 /* ========================================================= */
 
@@ -205,6 +344,59 @@ function setupEventListeners() {
         }
     });
 
+    document
+        .querySelectorAll(".map-tab")
+        .forEach(tab => {
+            tab.addEventListener("click", () => {
+                currentMapMode = tab.dataset.mode;
+                renderMap();
+            });
+        });
+
+    document
+        .querySelectorAll(".map-pill")
+        .forEach(pill => {
+
+            pill.addEventListener(
+                "click",
+                event => {
+                    event.stopPropagation();
+                    openSensorDetails(pill.dataset.sensor);
+                }
+            );
+
+            pill.addEventListener("keydown", event => {
+                if (event.key !== "Enter" && event.key !== " ") {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                openSensorDetails(pill.dataset.sensor);
+            });
+
+        });
+
+    document
+        .querySelectorAll(".map-room")
+        .forEach(room => {
+
+            room.addEventListener(
+                "click",
+                () => openRoomDetails(room.dataset.room)
+            );
+
+            room.addEventListener("keydown", event => {
+                if (event.key !== "Enter" && event.key !== " ") {
+                    return;
+                }
+                event.preventDefault();
+                openRoomDetails(room.dataset.room);
+            });
+
+        });
+
+    renderMap();
+
 }
 
 
@@ -309,6 +501,10 @@ const PAGE_CONFIG = {
         title: "Vessels",
         subtitle: "Inspect connected devices and their recent activity."
     },
+    map: {
+        title: "Ship map",
+        subtitle: "Security level per sensor, by floor."
+    },
     alerts: {
         title: "Alerts",
         subtitle: "Review unresolved incidents requiring attention."
@@ -349,6 +545,7 @@ function applyRoute() {
         stats: page === "dashboard" || page === "status",
         alerts: page === "dashboard" || page === "alerts",
         vessels: page === "dashboard" || page === "vessels" || page === "status",
+        map: page === "map",
         logs: page === "dashboard" || page === "logs" || page === "events",
         settings: page === "settings"
     };
@@ -356,6 +553,7 @@ function applyRoute() {
     document.querySelector(".stats-grid").hidden = !visible.stats;
     document.getElementById("alerts").hidden = !visible.alerts;
     document.getElementById("vessels").hidden = !visible.vessels;
+    document.getElementById("map-page").hidden = !visible.map;
     document.getElementById("logs").hidden = !visible.logs;
     document.getElementById("settings-page").hidden = !visible.settings;
 }
@@ -1038,6 +1236,193 @@ function renderLogs() {
             );
 
         }
+    );
+
+}
+
+
+/* ========================================================= */
+/* SHIP MAP RENDERING                                          */
+/* ========================================================= */
+
+function renderMap() {
+
+    document
+        .querySelectorAll(".map-tab")
+        .forEach(tab => {
+            tab.classList.toggle(
+                "active",
+                tab.dataset.mode === currentMapMode
+            );
+        });
+
+    const canvas =
+        document.querySelector(".map-canvas");
+
+    if (canvas) {
+        canvas.classList.toggle(
+            "hide-sensors",
+            currentMapMode === "plan"
+        );
+    }
+
+    document
+        .querySelectorAll(".map-pill")
+        .forEach(pill => {
+
+            const level =
+                SHIP_SENSORS[pill.dataset.sensor] || 1;
+
+            pill.classList.remove(
+                "map-pill-ok",
+                "map-pill-warn",
+                "map-pill-critical"
+            );
+
+            pill.classList.add(
+                getMapPillClass(level)
+            );
+
+        });
+
+}
+
+
+function getMapPillClass(level) {
+
+    switch (Number(level)) {
+
+        case 3:
+            return "map-pill-critical";
+
+        case 2:
+            return "map-pill-warn";
+
+        default:
+            return "map-pill-ok";
+
+    }
+
+}
+
+
+function getSensorBadgeClass(level) {
+
+    switch (Number(level)) {
+
+        case 3:
+            return "badge-danger";
+
+        case 2:
+            return "badge-warning";
+
+        default:
+            return "badge-success";
+
+    }
+
+}
+
+
+function getSensorSummaryClass(level) {
+
+    switch (Number(level)) {
+
+        case 3:
+            return "critical";
+
+        case 2:
+            return "warning";
+
+        default:
+            return "online";
+
+    }
+
+}
+
+
+function openSensorDetails(sensorId) {
+
+    if (!sensorId) {
+        return;
+    }
+
+    const level =
+        SHIP_SENSORS[sensorId] || 1;
+
+    const label =
+        SHIP_SENSOR_LABELS[sensorId] || sensorId;
+
+    openDetails(
+        "Sensor",
+        label,
+        `
+            <div class="detail-summary ${getSensorSummaryClass(level)}">
+                <span class="badge ${getSensorBadgeClass(level)}">Niveau ${level}</span>
+                <strong>Ship sensor</strong>
+            </div>
+            <p class="detail-message">
+                Aucun capteur physique n'est encore branché sur ce point.
+                Cette valeur est une donnée de démonstration, en attendant
+                que le format des données envoyées par les vrais capteurs
+                soit défini.
+            </p>
+        `
+    );
+
+}
+
+
+function openRoomDetails(roomId) {
+
+    const room =
+        SHIP_ROOMS[roomId];
+
+    if (!room) {
+        return;
+    }
+
+    const staffList =
+        room.staff.map(person => `
+            <div>
+                <dt>${escapeHTML(person.name)}</dt>
+                <dd>${escapeHTML(person.role)}</dd>
+            </div>
+        `).join("");
+
+    const sensorList =
+        (room.sensors || []).map(sensorId => {
+
+            const level =
+                SHIP_SENSORS[sensorId] || 1;
+
+            const label =
+                SHIP_SENSOR_LABELS[sensorId] || sensorId;
+
+            return `
+                <div>
+                    <dt>${escapeHTML(label)}</dt>
+                    <dd><span class="badge ${getSensorBadgeClass(level)}">Niveau ${level}</span></dd>
+                </div>
+            `;
+
+        }).join("");
+
+    openDetails(
+        "Room",
+        room.label,
+        `
+            <p class="detail-message">${escapeHTML(room.purpose)}</p>
+
+            <h3 class="detail-section-title">Personnel</h3>
+            <dl class="detail-list">${staffList}</dl>
+
+            ${sensorList ? `
+                <h3 class="detail-section-title">Capteurs</h3>
+                <dl class="detail-list">${sensorList}</dl>
+            ` : ""}
+        `
     );
 
 }
