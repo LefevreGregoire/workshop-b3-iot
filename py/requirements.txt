@@ -1,4 +1,4 @@
 Flask==3.1.2
 cryptography>=42.0
 requests>=2.31
-paho-mqtt==1.6.1
+paho-mqtt==1.6.1psutil==5.9.8\nrequests==2.31.0

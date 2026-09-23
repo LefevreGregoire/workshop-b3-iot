@@ -34,13 +34,13 @@ except ImportError:
 # ============================================================
 
 try:
-    from clasify import classify_alert, sort_by_severity
+    from classify import classify_alert, sort_by_severity
 except ImportError:
     classify_alert = None
     sort_by_severity = None
 
     print(
-        "⚠️ clasify.py introuvable."
+        "⚠️ classify.py introuvable."
         " La classification automatique sera désactivée."
     )
 
