@@ -3,7 +3,7 @@ import json
 import random
 import paho.mqtt.client as mqtt
 
-BROKER = "10.42.0.246"
+BROKER = "192.168.50.171"
 PORT = 1883
 TOPIC = "cyberspace/capteurs/salle-serveur"
 

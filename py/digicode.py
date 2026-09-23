@@ -7,7 +7,7 @@ import paho.mqtt.publish as publish
 from gpiozero import MotionSensor
 
 # Configuration
-BROKER_IP = "10.42.0.10"
+BROKER_IP = "192.168.50.171"
 TOPIC = "cyberspace/capteurs/vessel1"
 DEVICE_NAME = "sas-reacteur-01"
 DEVICE_IP = "10.42.0.188"
