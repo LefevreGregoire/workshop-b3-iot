@@ -1803,6 +1803,34 @@ function escapeHTML(value) {
 // VERCEL/LINEAR MODERN UI INJECTION
 // ==========================================
 
+
+const showToast = (msg, type='info') => {
+    const container = document.getElementById('toast-container');
+    if(!container) return;
+    const toast = document.createElement('div');
+    toast.style.background = type === 'error' ? 'var(--danger-color)' : (type === 'success' ? '#10b981' : '#111827');
+    toast.style.color = '#fff';
+    toast.style.padding = '12px 20px';
+    toast.style.borderRadius = '8px';
+    toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+    toast.style.fontFamily = 'var(--font-sans)';
+    toast.style.fontSize = '14px';
+    toast.style.fontWeight = '500';
+    toast.style.transform = 'translateY(100%)';
+    toast.style.opacity = '0';
+    toast.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    toast.innerText = msg;
+    container.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => { toast.style.transform = 'translateY(0)'; toast.style.opacity = '1'; }, 10);
+    // Animate out
+    setTimeout(() => {
+        toast.style.transform = 'translateY(20px)'; toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+};
+
 const initModernUI = () => {
     // 1. Inject Telemetry & Top Buttons into topbar
     const topbar = document.querySelector('.topbar');
@@ -1837,12 +1865,12 @@ const initModernUI = () => {
         
         document.getElementById('btn-scan').addEventListener('click', () => {
             fetch('/api/command/scan', {method: 'POST'});
-            alert("Scan de sécurité en cours...");
+            showToast('Scan de sécurité en cours...', 'info');
         });
         document.getElementById('btn-lockdown').addEventListener('click', () => {
             if(confirm("Confirmer Alarme Rouge Globale ?")) {
                 fetch('/api/command/lockdown', {method: 'POST'});
-                alert("Lockdown initié.");
+                showToast('🚨 Lockdown initié ! Alarme Rouge !', 'error');
             }
         });
     }
@@ -1883,11 +1911,11 @@ const initModernUI = () => {
                             headers:{'Content-Type':'application/json'},
                             body: JSON.stringify({action: 'TOGGLE'})
                         });
-                        alert("Commande de porte envoyée.");
+                        showToast('Commande de porte envoyée.', 'success');
                     });
                     document.getElementById('btn-unban').addEventListener('click', () => {
                         fetch('/api/devices/sas-reacteur-01/restore', {method: 'POST'});
-                        alert("Tentative de restauration...");
+                        showToast('Tentative de restauration du firewall...', 'success');
                     });
                 }
             }, 100); // Wait for original JS to populate drawer

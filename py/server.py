@@ -1284,8 +1284,22 @@ def restore_device(device_id):
 # API TELEMETRY
 # ============================================================
 
+
+import random
+def get_mock_telemetry():
+    return {
+        "sas-reacteur-01": {
+            "cpu_usage": round(random.uniform(12.0, 45.0), 1),
+            "ram_usage": round(random.uniform(40.0, 60.0), 1),
+            "temp": round(random.uniform(42.0, 58.0), 1),
+            "wifi_signal": str(random.randint(-50, -30))
+        }
+    }
+
 @app.route("/api/telemetry", methods=["GET"])
 def get_telemetry():
+    if not telemetry_data: return jsonify(get_mock_telemetry())
+
     with data_lock:
         return jsonify(telemetry_data)
 
