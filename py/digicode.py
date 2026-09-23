@@ -6,6 +6,63 @@ from datetime import datetime, timezone
 import paho.mqtt.publish as publish
 from gpiozero import MotionSensor
 
+import requests
+import psutil
+import subprocess
+import paho.mqtt.client as mqtt
+
+SERVER_URL = "http://192.168.50.171:5000"
+
+def get_wifi_signal():
+    try:
+        output = subprocess.check_output("iwconfig wlan0 | grep -i quality", shell=True).decode()
+        if "Signal level" in output: return output.split("Signal level=")[1].split(" ")[0]
+    except: pass
+    return "-100"
+
+def telemetry_thread():
+    while True:
+        try:
+            temp = 0.0
+            try:
+                with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+                    temp = float(f.read().strip()) / 1000.0
+            except: pass
+            payload = {
+                "cpu_usage": psutil.cpu_percent(interval=1),
+                "ram_usage": psutil.virtual_memory().percent,
+                "temp": temp,
+                "wifi_signal": get_wifi_signal()
+            }
+            requests.post(f"{SERVER_URL}/api/telemetry/{DEVICE_NAME}", json=payload, timeout=2)
+        except Exception: pass
+        import time
+        time.sleep(5)
+
+def on_message(client, userdata, msg):
+    global locked
+    try:
+        payload = json.loads(msg.payload.decode())
+        action = payload.get("action")
+        if action in ["LOCKDOWN", "LOCK", "TOGGLE"]:
+            print("\n[!] COMMANDE DISTANTE: VERROUILLAGE FORCE !")
+            locked = True
+        elif action == "UNLOCK":
+            print("\n[!] COMMANDE DISTANTE: DEVERROUILLAGE !")
+            locked = False
+    except: pass
+
+def mqtt_listener_thread():
+    client = mqtt.Client()
+    client.on_message = on_message
+    try:
+        client.connect(BROKER_IP, 1883, 60)
+        client.subscribe("cyberspace/command/global")
+        client.subscribe(f"cyberspace/command/{DEVICE_NAME}")
+        client.loop_forever()
+    except: pass
+
+
 # Configuration
 BROKER_IP = "192.168.50.171"
 TOPIC = "cyberspace/capteurs/vessel1"
@@ -46,6 +103,8 @@ def pir_thread():
 
 def main():
     global locked
+    threading.Thread(target=telemetry_thread, daemon=True).start()
+    threading.Thread(target=mqtt_listener_thread, daemon=True).start()
     
     # Démarrer le capteur PIR en tâche de fond
     t = threading.Thread(target=pir_thread, daemon=True)

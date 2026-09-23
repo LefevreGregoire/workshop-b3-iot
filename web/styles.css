@@ -1941,3 +1941,100 @@ tbody tr:last-child td {
     overflow: hidden;
 
 }
+
+/* ========================================== */
+/* VERCEL/LINEAR MODERN OVERRIDES             */
+/* ========================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+    --bg-color: #fafafa;
+    --surface-color: rgba(255, 255, 255, 0.85);
+    --border-color: #eaeaea;
+    --text-primary: #111111;
+    --text-secondary: #666666;
+    --accent-color: #0070F3;
+    --accent-hover: #0051a8;
+    --success-color: #0070F3; /* Vercel uses blue for main stuff */
+    --warning-color: #f5a623;
+    --danger-color: #e00;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.02);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+    --shadow-lg: 0 12px 24px rgba(0,0,0,0.08);
+}
+
+body {
+    background-color: var(--bg-color);
+    background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+    background-size: 20px 20px;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+}
+
+.topbar {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: none;
+    color: var(--text-primary);
+    padding: 0 20px;
+}
+
+.brand-title { font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
+.brand-subtitle { font-weight: 500; color: var(--text-secondary); }
+.brand-icon { filter: grayscale(100%); opacity: 0.8; }
+
+.panel {
+    background: var(--surface-color);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+}
+
+.telemetry-container {
+    display: flex; gap: 20px; align-items: center;
+}
+
+.tel-badge {
+    display: flex; flex-direction: column; align-items: flex-start;
+    background: #fff; border: 1px solid var(--border-color);
+    padding: 6px 12px; border-radius: 8px; box-shadow: var(--shadow-sm);
+}
+
+.tel-label { font-size: 10px; text-transform: uppercase; font-weight: 600; color: var(--text-secondary); }
+.tel-val { font-size: 14px; font-weight: 600; font-family: var(--font-mono); color: var(--text-primary); }
+
+.modern-btn {
+    background: var(--text-primary);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.modern-btn:hover { background: #333; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+.modern-btn.danger { background: var(--danger-color); }
+.modern-btn.danger:hover { background: #c00; }
+
+.action-drawer {
+    margin-top: 20px; padding: 20px;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+.action-drawer-title {
+    font-size: 12px; text-transform: uppercase; font-weight: 600; color: var(--text-secondary);
+    margin-bottom: 12px; letter-spacing: 0.05em;
+}
+

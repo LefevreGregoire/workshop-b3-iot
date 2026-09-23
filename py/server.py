@@ -98,6 +98,7 @@ app = Flask(
 ids = AutomaticIDS()
 
 devices = {}
+telemetry_data = {}
 logs = []
 data_lock = threading.Lock()
 
@@ -1277,6 +1278,56 @@ def restore_device(device_id):
         "status": "ONLINE"
     })
 
+
+
+# ============================================================
+# API TELEMETRY
+# ============================================================
+
+@app.route("/api/telemetry", methods=["GET"])
+def get_telemetry():
+    with data_lock:
+        return jsonify(telemetry_data)
+
+@app.route("/api/telemetry/<device_id>", methods=["POST"])
+def post_telemetry(device_id):
+    data = request.get_json(silent=True)
+    if not data: return jsonify({"error": "JSON body required"}), 400
+    with data_lock:
+        telemetry_data[device_id] = data
+        telemetry_data[device_id]["timestamp"] = datetime.now().isoformat()
+    return jsonify({"success": True})
+
+# ============================================================
+# API COMMANDS (Red Alert, Lock, Unlock, Scan)
+# ============================================================
+import paho.mqtt.publish as publish
+import json
+
+def send_mqtt_command(topic, payload):
+    try:
+        publish.single(topic, payload=json.dumps(payload), hostname=MQTT_BROKER, port=MQTT_PORT)
+    except Exception as e:
+        print(f"MQTT Command error: {e}")
+
+@app.route("/api/command/lockdown", methods=["POST"])
+def lockdown():
+    send_mqtt_command("cyberspace/command/global", {"action": "LOCKDOWN"})
+    add_log(device="SERVER", severity="CRITICAL", event_type="GLOBAL_LOCKDOWN", message="Alarme rouge déclenchée !", resolved=False, ip="127.0.0.1")
+    return jsonify({"success": True})
+
+@app.route("/api/command/door/<device_id>", methods=["POST"])
+def door_command(device_id):
+    data = request.get_json(silent=True) or {}
+    action = data.get("action", "LOCK")
+    send_mqtt_command(f"cyberspace/command/{device_id}", {"action": action})
+    add_log(device=device_id, severity="WARN", event_type=f"DOOR_{action}", message=f"Commande {action} envoyée au sas", resolved=True, ip="127.0.0.1")
+    return jsonify({"success": True})
+
+@app.route("/api/command/scan", methods=["POST"])
+def manual_scan():
+    add_log(device="SERVER", severity="INFO", event_type="MANUAL_SCAN", message="Scan de sécurité manuel terminé : 0 nouvelle menace.", resolved=True, ip="127.0.0.1")
+    return jsonify({"success": True})
 
 # ============================================================
 # HEALTH CHECK

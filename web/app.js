@@ -1798,3 +1798,101 @@ function escapeHTML(value) {
     return div.innerHTML;
 
 }
+
+// ==========================================
+// VERCEL/LINEAR MODERN UI INJECTION
+// ==========================================
+
+const initModernUI = () => {
+    // 1. Inject Telemetry & Top Buttons into topbar
+    const topbar = document.querySelector('.topbar');
+    if(topbar && !document.getElementById('telemetry-container')) {
+        const topHtml = `
+            <div id="telemetry-container" class="telemetry-container" style="margin-left: auto;">
+                <div class="tel-badge">
+                    <span class="tel-label">CPU</span>
+                    <span id="tel-cpu" class="tel-val">--%</span>
+                </div>
+                <div class="tel-badge">
+                    <span class="tel-label">RAM</span>
+                    <span id="tel-ram" class="tel-val">--%</span>
+                </div>
+                <div class="tel-badge">
+                    <span class="tel-label">TEMP</span>
+                    <span id="tel-temp" class="tel-val">--°C</span>
+                </div>
+                <div class="tel-badge">
+                    <span class="tel-label">WIFI</span>
+                    <span id="tel-wifi" class="tel-val">-- dBm</span>
+                </div>
+                <div style="width: 1px; height: 30px; background: var(--border-color); margin: 0 10px;"></div>
+                <button id="btn-scan" class="modern-btn" style="margin-right: 10px;">Security Scan</button>
+                <button id="btn-lockdown" class="modern-btn danger">Red Alert</button>
+            </div>
+        `;
+        // Insert right after the brand
+        const brand = topbar.querySelector('.brand');
+        if(brand) brand.insertAdjacentHTML('afterend', topHtml);
+        else topbar.insertAdjacentHTML('beforeend', topHtml);
+        
+        document.getElementById('btn-scan').addEventListener('click', () => {
+            fetch('/api/command/scan', {method: 'POST'});
+            alert("Scan de sécurité en cours...");
+        });
+        document.getElementById('btn-lockdown').addEventListener('click', () => {
+            if(confirm("Confirmer Alarme Rouge Globale ?")) {
+                fetch('/api/command/lockdown', {method: 'POST'});
+                alert("Lockdown initié.");
+            }
+        });
+    }
+
+    // 2. Telemetry Loop
+    setInterval(async () => {
+        try {
+            const res = await fetch('/api/telemetry');
+            const data = await res.json();
+            const devices = Object.keys(data);
+            if(devices.length > 0) {
+                const tel = data[devices[0]];
+                document.getElementById('tel-cpu').innerText = tel.cpu_usage + '%';
+                document.getElementById('tel-ram').innerText = tel.ram_usage + '%';
+                document.getElementById('tel-temp').innerText = tel.temp.toFixed(1) + '°C';
+                document.getElementById('tel-wifi').innerText = tel.wifi_signal + ' dBm';
+            }
+        } catch (e) {}
+    }, 2000);
+
+    // 3. Inject buttons into detail drawer dynamically when opened
+    document.addEventListener('click', (e) => {
+        const room = e.target.closest('.map-room');
+        if(room) {
+            setTimeout(() => {
+                const content = document.getElementById('detail-content');
+                if(content && !document.getElementById('modern-action-drawer')) {
+                    content.insertAdjacentHTML('beforeend', `
+                        <div id="modern-action-drawer" class="action-drawer">
+                            <div class="action-drawer-title">Remote Override</div>
+                            <button id="btn-door" class="modern-btn" style="width: 100%; margin-bottom: 10px;">Toggle Door Lock</button>
+                            <button id="btn-unban" class="modern-btn" style="width: 100%; background: #fff; color: #111; border: 1px solid #ccc;">Unban IP / Restore Firewall</button>
+                        </div>
+                    `);
+                    document.getElementById('btn-door').addEventListener('click', () => {
+                        fetch('/api/command/door/sas-reacteur-01', {
+                            method: 'POST',
+                            headers:{'Content-Type':'application/json'},
+                            body: JSON.stringify({action: 'TOGGLE'})
+                        });
+                        alert("Commande de porte envoyée.");
+                    });
+                    document.getElementById('btn-unban').addEventListener('click', () => {
+                        fetch('/api/devices/sas-reacteur-01/restore', {method: 'POST'});
+                        alert("Tentative de restauration...");
+                    });
+                }
+            }, 100); // Wait for original JS to populate drawer
+        }
+    });
+};
+
+setTimeout(initModernUI, 1000);
