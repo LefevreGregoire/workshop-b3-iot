@@ -78,21 +78,21 @@ Raspberry Pi (x2), MQTT (Mosquitto), Python, Flask, Docker, CI/CD
 
 Cyberspace Horizon 2080 est un prototype de centre de sécurité
 inter-systèmes. Il supervise des équipements IoT (capteurs, digicodes)
-répartis dans un environnement spatial simulé. Il intercepte les signaux
-MQTT, les chiffre, et les analyse en temps réel pour détecter et bloquer
-les intrusions.
+répartis dans un environnement spatial simulé. Son rôle est d'analyser
+le trafic MQTT chiffré en temps réel afin d'isoler les équipements
+compromis.
 
-\textbf{Chaîne de valeur :} équipement → événement MQTT → détection IDS
-→ alerte → réponse automatisée (confinement).
+\textbf{Chaîne de valeur :} équipement \textgreater{} événement MQTT
+\textgreater{} détection IDS \textgreater{} alerte \textgreater{}
+réponse automatisée (confinement).
 
-\textbf{Principes directeurs :} 1. \textbf{Zéro confiance envers le
-transport.} Tout message MQTT est considéré hostile s'il n'est pas
+\textbf{Principes directeurs :} 1. \textbf{Architecture Zero Trust
+(Transport).} Tout message MQTT est considéré hostile s'il n'est pas
 chiffré (AES-128) et protégé par un jeton anti-rejeu. 2. \textbf{Réponse
-Autonome.} L'isolement d'un équipement compromis est réalisé
+automatisée.} L'isolement d'un équipement compromis est réalisé
 instantanément par le serveur, sans intervention humaine requise. 3.
-\textbf{Simplicité et robustesse.} Le système fonctionne intégralement
-en mémoire vive locale (Edge Computing) pour garantir des temps de
-réponse de l'ordre de la milliseconde.
+\textbf{Exécution locale (Edge).} Le traitement s'effectue localement en
+mémoire (Edge Computing) pour minimiser la latence de détection.
 
 \subsection{2. Contexte, hypothèses et
 contraintes}\label{contexte-hypothuxe8ses-et-contraintes}
@@ -115,8 +115,7 @@ contraintes}\label{contexte-hypothuxe8ses-et-contraintes}
   isolé.
 \end{itemize}
 
-\subsection{3. Objectifs et priorisation
-(MoSCoW)}\label{objectifs-et-priorisation-moscow}
+\subsection{3. Objectifs (MoSCoW)}\label{objectifs-moscow}
 
 \begin{longtable}[]{@{}
   >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.4706}}
@@ -146,8 +145,9 @@ par jetons web API. \\
 \begin{itemize}
 \tightlist
 \item
-  \textbf{Flux Sécurisé :} Capteur (PIR/Digicode) → Chiffrement AES-128
-  Fernet + Horodatage → MQTT (QoS 1) → Serveur Central → IDS.
+  \textbf{Flux Sécurisé :} Capteur (PIR/Digicode) \textgreater{}
+  Chiffrement AES-128 Fernet + Horodatage \textgreater{} MQTT (QoS 1)
+  \textgreater{} Serveur Central \textgreater{} IDS.
 \item
   \textbf{Composants :}
 

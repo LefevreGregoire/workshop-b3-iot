@@ -6,14 +6,14 @@
 ---
 
 ## 1. Vision
-Cyberspace Horizon 2080 est un prototype de centre de sécurité inter-systèmes. Il supervise des équipements IoT (capteurs, digicodes) répartis dans un environnement spatial simulé. Il intercepte les signaux MQTT, les chiffre, et les analyse en temps réel pour détecter et bloquer les intrusions.
+Cyberspace Horizon 2080 est un prototype de centre de sécurité inter-systèmes. Il supervise des équipements IoT (capteurs, digicodes) répartis dans un environnement spatial simulé. Son rôle est d'analyser le trafic MQTT chiffré en temps réel afin d'isoler les équipements compromis.
 
-**Chaîne de valeur :** équipement → événement MQTT → détection IDS → alerte → réponse automatisée (confinement).
+**Chaîne de valeur :** équipement > événement MQTT > détection IDS > alerte > réponse automatisée (confinement).
 
 **Principes directeurs :**
-1. **Zéro confiance envers le transport.** Tout message MQTT est considéré hostile s'il n'est pas chiffré (AES-128) et protégé par un jeton anti-rejeu.
-2. **Réponse Autonome.** L'isolement d'un équipement compromis est réalisé instantanément par le serveur, sans intervention humaine requise.
-3. **Simplicité et robustesse.** Le système fonctionne intégralement en mémoire vive locale (Edge Computing) pour garantir des temps de réponse de l'ordre de la milliseconde.
+1. **Architecture Zero Trust (Transport).** Tout message MQTT est considéré hostile s'il n'est pas chiffré (AES-128) et protégé par un jeton anti-rejeu.
+2. **Réponse automatisée.** L'isolement d'un équipement compromis est réalisé instantanément par le serveur, sans intervention humaine requise.
+3. **Exécution locale (Edge).** Le traitement s'effectue localement en mémoire (Edge Computing) pour minimiser la latence de détection.
 
 ## 2. Contexte, hypothèses et contraintes
 * Projet réalisé dans le cadre du Workshop Horizon 2080 : équipe de 4, durée courte.
@@ -21,7 +21,7 @@ Cyberspace Horizon 2080 est un prototype de centre de sécurité inter-systèmes
 * **Hypothèse H2 :** Le système est déployé sur deux cartes Raspberry Pi. La Board 1 (pi-center) agit comme Serveur Central. La Board 2 agit comme Client IoT (Digicode, Capteur PIR, Terminal de Chat).
 * **Contrainte :** Déploiement cible ARM64, réseau Wi-Fi local isolé.
 
-## 3. Objectifs et priorisation (MoSCoW)
+## 3. Objectifs (MoSCoW)
 | Niveau | Contenu |
 |--------|---------|
 | **MUST** | Dashboard temps réel, Ingestion MQTT chiffrée, IDS automatique, Détection de messages en clair, Détection de Replay Attacks, Isolation automatique (Watchdog), CI/CD multi-architecture. |
@@ -29,7 +29,7 @@ Cyberspace Horizon 2080 est un prototype de centre de sécurité inter-systèmes
 | **WON'T** | Base de données persistante (SQLite abandonné au profit de la RAM pour les performances), caméras virtuelles, authentification par jetons web API. |
 
 ## 4. Architecture Globale
-* **Flux Sécurisé :** Capteur (PIR/Digicode) → Chiffrement AES-128 Fernet + Horodatage → MQTT (QoS 1) → Serveur Central → IDS.
+* **Flux Sécurisé :** Capteur (PIR/Digicode) > Chiffrement AES-128 Fernet + Horodatage > MQTT (QoS 1) > Serveur Central > IDS.
 * **Composants :**
   * **Serveur Central (Python/Flask) :** Orchestration, Dashboard Web.
   * **Broker (Mosquitto) :** Transport asynchrone sécurisé (identifiants `v-client`).
