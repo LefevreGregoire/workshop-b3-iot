@@ -1299,8 +1299,6 @@ def server_telemetry_thread():
             
             # Persistance BDD (Toutes les 5 secondes)
             with data_lock:
-                database.save_data('devices', devices)
-                database.save_data('logs', logs)
         except Exception: pass
         time.sleep(5)
 
@@ -1459,28 +1457,3 @@ if __name__ == "__main__":
     )
 
 
-@app.route("/api/database", methods=["GET"])
-def api_database():
-    try:
-        import sqlite3
-        import os
-        db_path = os.path.join(os.path.dirname(__file__), 'cyberspace.db')
-        conn = sqlite3.connect(db_path)
-        c = conn.cursor()
-        c.execute('SELECT key, data FROM store')
-        rows = c.fetchall()
-        conn.close()
-        
-        db_content = {}
-        import json
-        for row in rows:
-            db_content[row[0]] = json.loads(row[1])
-            
-        return jsonify({
-            "status": "success",
-            "file": "cyberspace.db",
-            "size_bytes": os.path.getsize(db_path),
-            "collections": db_content
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
