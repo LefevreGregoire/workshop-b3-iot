@@ -544,7 +544,7 @@ function applyRoute() {
     const visible = {
         stats: page === "dashboard" || page === "status",
         alerts: page === "dashboard" || page === "alerts",
-        vessels: page === "dashboard" || page === "devices" || page === "status",
+        devices: page === "dashboard" || page === "devices" || page === "status",
         map: page === "map",
         logs: page === "dashboard" || page === "logs" || page === "events",
         settings: page === "settings"
