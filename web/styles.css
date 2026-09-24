@@ -503,6 +503,105 @@ button {
 }
 
 
+.sensor-notifications {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    margin: -4px 0 20px;
+    padding: 10px 14px;
+    border-left: 4px solid var(--map-ok);
+    background: #ffffff;
+    box-shadow: var(--shadow);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+
+}
+
+
+.sensor-notifications:hover,
+.sensor-notifications:focus-visible {
+
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+    transform: translateY(-1px);
+
+}
+
+
+.sensor-notifications:focus-visible {
+
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+
+}
+
+
+.sensor-notification-icon {
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--map-ok);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+
+}
+
+
+.sensor-notification-count {
+
+    min-width: 24px;
+    margin-left: auto;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: var(--map-ok);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+
+}
+
+
+.sensor-notification-warn {
+
+    border-left-color: var(--map-warn);
+
+}
+
+
+.sensor-notification-warn .sensor-notification-icon,
+.sensor-notification-warn .sensor-notification-count {
+
+    background: var(--map-warn);
+
+}
+
+
+.sensor-notification-alert {
+
+    border-left-color: var(--map-critical);
+
+}
+
+
+.sensor-notification-alert .sensor-notification-icon,
+.sensor-notification-alert .sensor-notification-count {
+
+    background: var(--map-critical);
+
+}
+
+
 .refresh-button {
 
     display: flex;
@@ -1661,6 +1760,143 @@ tbody tr:last-child td {
 }
 
 
+.map-pill-triggered {
+
+    animation: sensor-trigger 0.6s ease-in-out 3;
+
+}
+
+
+@keyframes sensor-trigger {
+
+    50% {
+        opacity: 0.35;
+        filter: brightness(1.8) drop-shadow(0 0 12px currentColor);
+    }
+
+}
+
+
+.sensor-events-panel {
+
+    border-top: 1px solid var(--map-panel-border);
+    background: #080d16;
+    color: var(--map-label);
+
+}
+
+
+.sensor-events-header {
+
+    padding: 16px 20px 10px;
+
+}
+
+
+.sensor-events-header h3 {
+
+    margin: 0;
+    font-size: 15px;
+
+}
+
+
+.sensor-events-header p {
+
+    margin: 3px 0 0;
+    color: #91a5b5;
+    font-size: 12px;
+
+}
+
+
+.sensor-events-container {
+
+    display: grid;
+    gap: 1px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 0 20px 16px;
+
+}
+
+
+.sensor-event {
+
+    display: grid;
+    grid-template-columns: 155px 60px 1fr;
+    align-items: center;
+    gap: 12px;
+    min-height: 38px;
+    padding: 7px 10px;
+    border-left: 3px solid var(--map-ok);
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 12px;
+
+}
+
+
+.sensor-event time {
+
+    color: #91a5b5;
+    font-variant-numeric: tabular-nums;
+
+}
+
+
+.sensor-event strong {
+
+    font-size: 11px;
+    letter-spacing: 0.4px;
+
+}
+
+
+.sensor-event-warn {
+
+    border-left-color: var(--map-warn);
+
+}
+
+
+.sensor-event-warn strong {
+
+    color: var(--map-warn);
+
+}
+
+
+.sensor-event-alert {
+
+    border-left-color: var(--map-critical);
+
+}
+
+
+.sensor-event-alert strong {
+
+    color: var(--map-critical);
+
+}
+
+
+.sensor-event-info strong {
+
+    color: var(--map-ok);
+
+}
+
+
+.sensor-events-empty {
+
+    margin: 0;
+    padding: 12px 10px;
+    color: #91a5b5;
+    font-size: 12px;
+
+}
+
+
 @media (max-width: 650px) {
 
     .map-toolbar {
@@ -1668,6 +1904,15 @@ tbody tr:last-child td {
         flex-direction: column;
         align-items: flex-start;
 
+    }
+
+    .sensor-event {
+        grid-template-columns: 1fr auto;
+        gap: 4px 10px;
+    }
+
+    .sensor-event span {
+        grid-column: 1 / -1;
     }
 
 }

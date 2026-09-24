@@ -40,6 +40,8 @@ let devices = [];
 
 let logs = [];
 
+let sensorEvents = [];
+
 
 /* ========================================================= */
 /* SHIP MAP                                                    */
@@ -186,6 +188,10 @@ const SHIP_ROOMS = {
 
 const REFRESH_INTERVAL = 2000;
 
+const SENSOR_TRIGGER_MIN_DELAY = 8000;
+
+const SENSOR_TRIGGER_MAX_DELAY = 15000;
+
 
 /* ========================================================= */
 /* INITIALIZATION                                              */
@@ -200,6 +206,8 @@ document.addEventListener(
         window.addEventListener("hashchange", applyRoute);
 
         loadDashboard();
+
+        scheduleSensorTrigger();
 
         setInterval(
             loadDashboard,
@@ -397,6 +405,15 @@ function setupEventListeners() {
 
     renderMap();
 
+    document
+        .getElementById("sensor-notifications")
+        .addEventListener(
+            "click",
+            () => {
+                window.location.hash = "map";
+            }
+        );
+
 }
 
 
@@ -534,6 +551,12 @@ function applyRoute() {
     const page = PAGE_CONFIG[requestedPage] ? requestedPage : "dashboard";
     const config = PAGE_CONFIG[page];
 
+    if (page === "map") {
+        sensorEvents.forEach(event => {
+            event.read = true;
+        });
+    }
+
     document.getElementById("page-title").textContent = config.title;
     document.getElementById("page-subtitle").textContent = config.subtitle;
 
@@ -556,6 +579,8 @@ function applyRoute() {
     document.getElementById("map-page").hidden = !visible.map;
     document.getElementById("logs").hidden = !visible.logs;
     document.getElementById("settings-page").hidden = !visible.settings;
+
+    renderSensorNotifications(page);
 }
 
 
@@ -1284,6 +1309,172 @@ function renderMap() {
             );
 
         });
+
+    renderSensorEvents();
+
+}
+
+
+function scheduleSensorTrigger() {
+
+    const delay = SENSOR_TRIGGER_MIN_DELAY + Math.random() * (
+        SENSOR_TRIGGER_MAX_DELAY - SENSOR_TRIGGER_MIN_DELAY
+    );
+
+    window.setTimeout(() => {
+        triggerRandomSensors();
+        scheduleSensorTrigger();
+    }, delay);
+
+}
+
+
+function triggerRandomSensors() {
+
+    const sensorIds = Object.keys(SHIP_SENSORS)
+        .sort(() => Math.random() - 0.5);
+
+    const triggeredCount = Math.floor(Math.random() * 3);
+    const triggeredSensors = sensorIds.slice(0, triggeredCount);
+
+    triggeredSensors.forEach(sensorId => {
+
+        const level = SHIP_SENSORS[sensorId] || 1;
+        const severity = getSensorSeverity(level);
+        const timestamp = new Date().toISOString();
+
+        sensorEvents.unshift({
+            timestamp,
+            sensorId,
+            severity,
+            label: SHIP_SENSOR_LABELS[sensorId] || sensorId,
+            read: window.location.hash.slice(1).toLowerCase() === "map"
+        });
+
+        const pill = document.querySelector(
+            `.map-pill[data-sensor="${sensorId}"]`
+        );
+
+        if (pill) {
+            pill.classList.add("map-pill-triggered");
+            window.setTimeout(() => {
+                pill.classList.remove("map-pill-triggered");
+            }, 1800);
+        }
+
+    });
+
+    sensorEvents = sensorEvents.slice(0, 30);
+    renderSensorEvents();
+    renderSensorNotifications();
+
+}
+
+
+function getSensorSeverity(level) {
+
+    switch (Number(level)) {
+
+        case 3:
+            return "ALERT";
+
+        case 2:
+            return "WARN";
+
+        default:
+            return "INFO";
+
+    }
+
+}
+
+
+function renderSensorEvents() {
+
+    const container = document.getElementById("sensor-events-container");
+
+    if (!container) {
+        return;
+    }
+
+    if (!sensorEvents.length) {
+        container.innerHTML = `
+            <p class="sensor-events-empty">En attente d'un déclenchement capteur...</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = sensorEvents.map(event => `
+        <div class="sensor-event sensor-event-${event.severity.toLowerCase()}">
+            <time datetime="${escapeHTML(event.timestamp)}">
+                ${escapeHTML(formatTimestamp(event.timestamp))}
+            </time>
+            <strong>${escapeHTML(event.severity)}</strong>
+            <span>${escapeHTML(event.label)}</span>
+        </div>
+    `).join("");
+
+}
+
+
+function renderSensorNotifications(page) {
+
+    const notification = document.getElementById("sensor-notifications");
+    const countElement = document.getElementById("sensor-notification-count");
+
+    if (!notification || !countElement) {
+        return;
+    }
+
+    const unreadEvents = sensorEvents.filter(event => !event.read);
+
+    notification.hidden = page === "map" || unreadEvents.length === 0;
+
+    if (!unreadEvents.length) {
+        countElement.textContent = "0";
+        notification.querySelector("strong").textContent =
+            "0 mouvements de capteur non lus";
+        return;
+    }
+
+    const severity = getSensorNotificationSeverity(unreadEvents);
+    const count = unreadEvents.length > 9 ? "9+" : unreadEvents.length;
+
+    notification.classList.remove(
+        "sensor-notification-info",
+        "sensor-notification-warn",
+        "sensor-notification-alert"
+    );
+    notification.classList.add(`sensor-notification-${severity.toLowerCase()}`);
+    countElement.textContent = count;
+
+    notification.querySelector("strong").textContent =
+        `${unreadEvents.length} mouvement${unreadEvents.length > 1 ? "s" : ""} de capteur non lu${unreadEvents.length > 1 ? "s" : ""}`;
+
+}
+
+
+function getSensorNotificationSeverity(events) {
+
+    if (events.some(event => event.severity === "ALERT")) {
+        return "ALERT";
+    }
+
+    if (events.some(event => event.severity === "WARN")) {
+        return "WARN";
+    }
+
+    return "INFO";
+
+}
+
+
+function formatTimestamp(timestamp) {
+
+    return new Date(timestamp).toLocaleString("fr-FR", {
+        dateStyle: "short",
+        timeStyle: "medium"
+    });
 
 }
 
