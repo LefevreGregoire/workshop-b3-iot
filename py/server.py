@@ -694,58 +694,25 @@ def on_mqtt_message(
     # --------------------------------------------------------
 
     try:
-
-        payload = msg.payload.decode(
-            "utf-8"
-        )
-
-    except UnicodeDecodeError:
-
-        print(
-            "❌ MQTT payload invalide."
-        )
-
-        add_log(
-            device="UNKNOWN",
-            severity="WARN",
-            event_type="MQTT_INVALID_PAYLOAD",
-            message="Invalid UTF-8 MQTT payload.",
-            resolved=False
-        )
-
-        return
-
-    print(
-        f"📥 MQTT [{msg.topic}] : {payload}"
-    )
-
-    # --------------------------------------------------------
-    # JSON
-    # --------------------------------------------------------
-
-    try:
-
-        event = json.loads(
-            payload
-        )
-
-    except json.JSONDecodeError:
-
-        print(
-            "⚠️ Payload MQTT non-JSON."
-        )
-
-        add_log(
-            device="UNKNOWN",
-            severity="WARN",
-            event_type="MQTT_INVALID_JSON",
-            message=(
-                "Received MQTT payload that "
-                "is not valid JSON."
-            ),
-            resolved=False
-        )
-
+        raw_payload = msg.payload.decode("utf-8")
+        
+        # CHIFFREMENT MILITAIRE: On tente de déchiffrer !
+        decrypted = cypher.decrypt_message(raw_payload)
+        
+        if decrypted is None:
+            # Soit le token est invalide, soit c'est une attaque !
+            try:
+                event = json.loads(raw_payload)
+                add_log("UNKNOWN", "CRITICAL", "UNENCRYPTED_PAYLOAD", "Payload en clair détecté ! Attaque interceptée par le système de chiffrement.", False)
+            except:
+                add_log("UNKNOWN", "CRITICAL", "INVALID_TOKEN", "Token chiffré invalide ou falsifié intercepté !", False)
+            return
+            
+        event = decrypted.get("data", decrypted)
+        print(f"📥 MQTT [Déchiffré] [{msg.topic}]")
+        
+    except Exception as e:
+        add_log("UNKNOWN", "WARN", "MQTT_ERROR", f"MQTT Error: {e}", False)
         return
 
     if not isinstance(event, dict):
@@ -845,6 +812,7 @@ def start_mqtt():
         client_id=MQTT_CLIENT_ID
     )
 
+    client.username_pw_set('v-client', 'secret_iot_2026')
     client.on_connect = on_mqtt_connect
     client.on_message = on_mqtt_message
     client.on_disconnect = on_mqtt_disconnect
@@ -1356,7 +1324,7 @@ import json
 
 def send_mqtt_command(topic, payload):
     try:
-        publish.single(topic, payload=json.dumps(payload), hostname=MQTT_BROKER, port=MQTT_PORT)
+        publish.single(topic, payload=json.dumps(payload), hostname=MQTT_BROKER, port=MQTT_PORT, auth={'username': 'v-client', 'password': 'secret_iot_2026'})
     except Exception as e:
         print(f"MQTT Command error: {e}")
 

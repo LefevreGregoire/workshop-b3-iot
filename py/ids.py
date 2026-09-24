@@ -21,6 +21,8 @@ Or monitor a file continuously:
 from __future__ import annotations
 
 import argparse
+import os
+import cypher
 import json
 import logging
 import re
