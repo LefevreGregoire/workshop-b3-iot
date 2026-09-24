@@ -10,6 +10,10 @@ import requests
 import psutil
 import subprocess
 import paho.mqtt.client as mqtt
+import os
+import cypher
+
+os.environ['IDS_SECRET_KEY'] = 'JKp-xlgYazhuZZRf2R1c6_xj-6Jhz2kYXwEn8ydy5zc='
 
 SERVER_URL = "http://192.168.50.171:5000"
 
@@ -54,13 +58,15 @@ def on_message(client, userdata, msg):
 
 def mqtt_listener_thread():
     client = mqtt.Client()
+    client.username_pw_set('v-client', 'secret_iot_2026')
     client.on_message = on_message
     try:
         client.connect(BROKER_IP, 1883, 60)
         client.subscribe("cyberspace/command/global")
         client.subscribe(f"cyberspace/command/{DEVICE_NAME}")
         client.loop_forever()
-    except: pass
+    except Exception as e:
+        print("Erreur listener:", e)
 
 
 # Configuration
@@ -84,7 +90,10 @@ def create_alert(alert_type, message):
 
 def publish_alert(alert):
     try:
-        publish.single(TOPIC, payload=json.dumps(alert), hostname=BROKER_IP, port=1883, qos=1)
+        # CHIFFREMENT MILITAIRE ACTIF (Fernet + Timestamp)
+        encrypted_payload = cypher.encrypt_message(DEVICE_NAME, alert)
+        auth = {'username': 'v-client', 'password': 'secret_iot_2026'}
+        publish.single(TOPIC, payload=encrypted_payload, hostname=BROKER_IP, port=1883, qos=1, auth=auth)
     except Exception as e:
         logging.error(f"[!] Erreur MQTT: {e}")
 
