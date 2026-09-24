@@ -1663,7 +1663,7 @@ function openDeviceDetails(deviceId) {
                 <div><dt>Recorded events</dt><dd>${deviceLogs.length}</dd></div>
             </dl>
             
-            ${device.id === 'SERVER' ? '' : `
+            ${(device.id === 'SERVER' || device.id === 'sas') ? '' : `
             <h3 class="detail-section-title">Remote Override</h3>
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom: 20px;">
                 <button onclick="remoteAction('${device.id}', 'door')" class="modern-btn">Toggle Door Lock</button>
