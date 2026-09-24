@@ -1299,6 +1299,7 @@ def server_telemetry_thread():
             
             # Persistance BDD (Toutes les 5 secondes)
             with data_lock:
+                pass
         except Exception: pass
         time.sleep(5)
 
