@@ -1296,9 +1296,6 @@ def server_telemetry_thread():
                     }
                 else:
                     devices["SERVER"]["last_seen"] = datetime.now().isoformat()
-            
-            # Persistance BDD (Toutes les 5 secondes)
-            with data_lock:
         except Exception: pass
         time.sleep(5)
 

@@ -505,6 +505,10 @@ const PAGE_CONFIG = {
         title: "Ship map",
         subtitle: "Security level per sensor, by floor."
     },
+    cameras: {
+        title: "Cameras",
+        subtitle: "Live security camera feed, vessel Aldebaran."
+    },
     alerts: {
         title: "Alerts",
         subtitle: "Review unresolved incidents requiring attention."
@@ -546,6 +550,7 @@ function applyRoute() {
         alerts: page === "dashboard" || page === "alerts",
         devices: page === "dashboard" || page === "devices" || page === "status",
         map: page === "map",
+        cameras: page === "cameras",
         logs: page === "dashboard" || page === "logs" || page === "events",
         settings: page === "settings"
     };
@@ -554,8 +559,31 @@ function applyRoute() {
     document.getElementById("alerts").hidden = !visible.alerts;
     document.getElementById("devices").hidden = !visible.devices;
     document.getElementById("map-page").hidden = !visible.map;
+    document.getElementById("cameras-page").hidden = !visible.cameras;
     document.getElementById("logs").hidden = !visible.logs;
     document.getElementById("settings-page").hidden = !visible.settings;
+
+    if (visible.cameras) {
+        loadCamerasFrame();
+    }
+}
+
+
+/* ========================================================= */
+/* CAMERAS                                                     */
+/* ========================================================= */
+
+function loadCamerasFrame() {
+
+    const frame =
+        document.getElementById("cameras-frame");
+
+    if (!frame || frame.getAttribute("src")) {
+        return;
+    }
+
+    frame.src = frame.dataset.src;
+
 }
 
 

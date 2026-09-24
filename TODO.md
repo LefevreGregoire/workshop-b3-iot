@@ -3,7 +3,7 @@
     [X] Classify and sort all kind of alerts based on risks and dangerosity for logs, from LOG, to WARN or CRITICAL.
     [X] First reponse available, cease all communications with a device with a CRITICAL error until end of Error.
     [X] Cypher and allow a decypher of all data/ping send from device X to Center Device.
-    [ ] Check device status at all time and if problems were pushed.
+    [X] Check device status at all time and if problems were pushed.
 
 # Container et Deployment
 
