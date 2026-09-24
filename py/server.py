@@ -102,7 +102,14 @@ app = Flask(
 
 ids = AutomaticIDS()
 
-devices = {}
+devices = {
+    "sas-reacteur-01": {
+        "id": "sas-reacteur-01",
+        "ip": "192.168.50.24",
+        "status": "OFFLINE",
+        "last_seen": "Jamais"
+    }
+}
 telemetry_data = {}
 logs = []
 data_lock = threading.Lock()
