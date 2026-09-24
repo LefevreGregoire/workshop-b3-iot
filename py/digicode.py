@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import datetime, timezone
 import paho.mqtt.publish as publish
-from gpiozero import MotionSensor
+
 
 import requests
 import psutil
@@ -99,6 +99,7 @@ def publish_alert(alert):
 
 def pir_thread():
     try:
+        from gpiozero import MotionSensor
         pir = MotionSensor(4)
         while True:
             pir.wait_for_motion()
