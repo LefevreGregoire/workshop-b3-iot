@@ -64,6 +64,7 @@ Pour garantir une sécurité maximale face aux attaques, les mécanismes suivant
 
 * 🌐 **Dashboard Web Temps Réel** : Interface graphique permettant de visualiser l'état des appareils, la consommation CPU/RAM, et les logs d'incidents (accessible via `http://[IP]:5000`).
 * 💬 **Secure Chat Terminal** : Application de messagerie inter-systèmes chiffrée de bout-en-bout via MQTT (`py/chat.py`).
+* 🚨 **Module Digicode & Capteur PIR** : Le fichier `py/digicode.py` tourne sur le Raspberry Pi distant. Il simule un sas verrouillé. Si le capteur de mouvement infrarouge (PIR sur GPIO 4) détecte une présence alors que le sas est verrouillé, une alerte d'intrusion physique est envoyée de manière chiffrée à l'IDS central. Taper le code valide (`2080`) désactive l'alarme pendant 10 secondes.
 * 🏴‍☠️ **Simulateur d'Attaques** : Un script de test (`test_hacker.py`) est fourni pour démontrer l'efficacité de l'IDS face à des attaques par injection en clair ou par rejeu de tokens.
 
 ## Prérequis et Installation
