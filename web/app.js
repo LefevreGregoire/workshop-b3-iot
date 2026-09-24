@@ -416,9 +416,9 @@ async function loadDashboard() {
             logsResponse
         ] = await Promise.all([
 
-            fetch("/api/devices"),
+            fetch("/api/devices?t=" + Date.now()),
 
-            fetch("/api/logs")
+            fetch("/api/logs?t=" + Date.now())
 
         ]);
 
