@@ -11,7 +11,7 @@
 
 ## À propos du projet
 
-Ce dépôt documente la mise en place d'une architecture IoT sécurisée de classe militaire pour un réseau de capteurs embarqués ("Vessels"). 
+Ce dépôt documente la mise en place d'une architecture IoT sécurisée pour un réseau de capteurs embarqués. 
 Le système repose sur une communication MQTT chiffrée, protégée par mot de passe, et supervisée par un **Système de Détection d'Intrusion (IDS)** automatique capable de détecter, journaliser et bloquer les tentatives de piratage.
 
 ## Architecture & Sécurité
@@ -28,7 +28,6 @@ Pour garantir une sécurité maximale face aux attaques, les mécanismes suivant
 ## Fonctionnalités Principales
 
 * 🌐 **Dashboard Web Temps Réel** : Interface graphique permettant de visualiser l'état des appareils, la consommation CPU/RAM, et les logs d'incidents (accessible via `http://[IP]:5000`).
-* 💽 **Base de Données SQLite** : Persistance complète des incidents de sécurité (Audit Trail) et des équipements connus, avec un inspecteur de BDD intégré au dashboard.
 * 💬 **Secure Chat Terminal** : Application de messagerie inter-vaisseaux chiffrée de bout-en-bout via MQTT (`py/chat.py`).
 * 🏴‍☠️ **Simulateur d'Attaques** : Un script de test (`test_hacker.py`) est fourni pour démontrer l'efficacité de l'IDS face à des attaques par injection en clair ou par rejeu de tokens.
 
@@ -51,7 +50,7 @@ Pour garantir une sécurité maximale face aux attaques, les mécanismes suivant
    cd py
    python3 server.py
    ```
-4. Démarrer un capteur (ex: Vessel-1) sur une autre carte :
+4. Démarrer un capteur sur une autre carte :
    ```bash
    python3 py/digicode.py
    ```
