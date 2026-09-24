@@ -1,4 +1,4 @@
-# Inter-Vessel Security Center (IoT)
+# Cyberspace IoT Security Center
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
@@ -36,7 +36,7 @@ flowchart TD
         IDS <-->|Updates| Web
     end
 
-    subgraph "Vessel / Endpoints"
+    subgraph "Capteurs / Endpoints"
         Sensor[Capteur / Digicode<br/>Client MQTT]:::client
         Chat[Terminal Chat<br/>Client MQTT]:::client
     end
@@ -63,7 +63,7 @@ Pour garantir une sécurité maximale face aux attaques, les mécanismes suivant
 ## Fonctionnalités Principales
 
 * 🌐 **Dashboard Web Temps Réel** : Interface graphique permettant de visualiser l'état des appareils, la consommation CPU/RAM, et les logs d'incidents (accessible via `http://[IP]:5000`).
-* 💬 **Secure Chat Terminal** : Application de messagerie inter-vaisseaux chiffrée de bout-en-bout via MQTT (`py/chat.py`).
+* 💬 **Secure Chat Terminal** : Application de messagerie inter-systèmes chiffrée de bout-en-bout via MQTT (`py/chat.py`).
 * 🏴‍☠️ **Simulateur d'Attaques** : Un script de test (`test_hacker.py`) est fourni pour démontrer l'efficacité de l'IDS face à des attaques par injection en clair ou par rejeu de tokens.
 
 ## Prérequis et Installation
