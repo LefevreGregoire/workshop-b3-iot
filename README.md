@@ -15,6 +15,42 @@ Le système repose sur une communication MQTT chiffrée, protégée par mot de p
 
 ## Architecture & Sécurité
 
+### Schéma Réseau & Flux de Données
+
+```mermaid
+flowchart TD
+    %% Define styles
+    classDef server fill:#012169,stroke:#fff,stroke-width:2px,color:#fff
+    classDef broker fill:#3C5280,stroke:#fff,stroke-width:2px,color:#fff
+    classDef client fill:#003B57,stroke:#fff,stroke-width:2px,color:#fff
+    classDef web fill:#000000,stroke:#fff,stroke-width:2px,color:#fff
+    classDef attacker fill:#A81D33,stroke:#fff,stroke-width:2px,color:#fff
+
+    %% Nodes
+    subgraph "Central Server (pi-center)"
+        Broker[MQTT Broker<br/>Port 1883]:::broker
+        IDS[Automatic IDS<br/>Security Engine]:::server
+        Web[Flask Dashboard<br/>Port 5000]:::web
+        
+        Broker <-->|Internal Logs| IDS
+        IDS <-->|Updates| Web
+    end
+
+    subgraph "Vessel / Endpoints"
+        Sensor[Capteur / Digicode<br/>Client MQTT]:::client
+        Chat[Terminal Chat<br/>Client MQTT]:::client
+    end
+
+    Hacker[Simulateur Attaque<br/>test_hacker.py]:::attacker
+
+    %% Links
+    Sensor -->|AES-128 Encrypted Payload<br/>Timestamped Token| Broker
+    Chat -->|AES-128 Encrypted Payload| Broker
+    Hacker -.->|Unencrypted / Replay Attack| Broker
+    
+    User((Administrateur)) -->|HTTP GET| Web
+```
+
 Le réseau est composé d'un **Serveur Central** (Dashboard Web + IDS + Broker MQTT) et de multiples **Capteurs** (ex: digicode, détecteur de mouvement, terminaux de chat). 
 
 Pour garantir une sécurité maximale face aux attaques, les mécanismes suivants ont été déployés :
