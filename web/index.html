@@ -367,6 +367,27 @@
 
         </div>
 
+        <button
+            id="sensor-notifications"
+            class="sensor-notifications"
+            type="button"
+            hidden
+            aria-live="polite"
+        >
+
+            <span class="sensor-notification-icon">!</span>
+
+            <strong>0 mouvements de capteur non lus</strong>
+
+            <span
+                id="sensor-notification-count"
+                class="sensor-notification-count"
+            >
+                0
+            </span>
+
+        </button>
+
 
         <!-- ================================================= -->
         <!-- STATISTICS                                        -->
@@ -806,6 +827,21 @@
 
             </div>
 
+            <div class="sensor-events-panel">
+
+                <div class="sensor-events-header">
+
+                    <div>
+                        <h3>Journal des déclenchements</h3>
+                        <p>Événements simulés des capteurs en attente du matériel.</p>
+                    </div>
+
+                </div>
+
+                <div id="sensor-events-container" class="sensor-events-container"></div>
+
+            </div>
+
         </section>
 
 
@@ -1054,7 +1090,7 @@
 <!-- JAVASCRIPT                                                 -->
 <!-- ========================================================= -->
 
-<script src="/app.js?v=6"></script>
+<script src="/app.js?v=7"></script>
 
 
 <div id="toast-container" style="position:fixed; bottom:20px; right:20px; display:flex; flex-direction:column; gap:10px; z-index:9999;"></div>

@@ -52,7 +52,13 @@ def check_offline_devices() -> None:
             # Never sent a heartbeat yet, nothing to compare against
             continue
 
-        elapsed = (datetime.now() - datetime.fromisoformat(last_seen)).total_seconds()
+        try:
+            last_seen_dt = datetime.fromisoformat(last_seen)
+        except ValueError:
+            # Not a real timestamp (e.g. a display placeholder like "Jamais")
+            continue
+
+        elapsed = (datetime.now() - last_seen_dt).total_seconds()
 
         if elapsed > OFFLINE_THRESHOLD:
             if device_id not in _flagged_offline:
@@ -98,6 +104,9 @@ def run_forever(interval: int = CHECK_INTERVAL) -> None:
             run_once()
         except requests.RequestException as error:
             logger.error("Could not reach the server: %s", error)
+        except Exception as error:
+            # Never let one bad iteration kill the watchdog thread for good.
+            logger.error("Unexpected error during a check: %s", error)
         time.sleep(interval)
 
 

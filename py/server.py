@@ -102,7 +102,14 @@ app = Flask(
 
 ids = AutomaticIDS()
 
-devices = {}
+devices = {
+    "sas": {
+        "id": "sas",
+        "ip": "192.168.50.24",
+        "status": "OFFLINE",
+        "last_seen": "Jamais"
+    }
+}
 telemetry_data = {}
 logs = []
 data_lock = threading.Lock()
@@ -1296,6 +1303,10 @@ def server_telemetry_thread():
                     }
                 else:
                     devices["SERVER"]["last_seen"] = datetime.now().isoformat()
+            
+            # Persistance BDD (Toutes les 5 secondes)
+            with data_lock:
+                pass
         except Exception: pass
         time.sleep(5)
 
@@ -1307,7 +1318,7 @@ def server_telemetry_thread():
 import random
 def get_mock_telemetry():
     return {
-        "sas-reacteur-01": {
+        "sas": {
             "cpu_usage": round(random.uniform(12.0, 45.0), 1),
             "ram_usage": round(random.uniform(40.0, 60.0), 1),
             "temp": round(random.uniform(42.0, 58.0), 1),
