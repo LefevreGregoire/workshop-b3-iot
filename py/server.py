@@ -6,6 +6,9 @@ import json
 import threading
 
 import paho.mqtt.client as mqtt
+import cypher
+import os
+os.environ['IDS_SECRET_KEY'] = 'JKp-xlgYazhuZZRf2R1c6_xj-6Jhz2kYXwEn8ydy5zc='
 
 from ids import AutomaticIDS
 
