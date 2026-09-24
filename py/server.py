@@ -1352,6 +1352,7 @@ def post_telemetry(device_id):
         else:
             devices[device_id]["ip"] = request.remote_addr
             devices[device_id]["last_seen"] = datetime.now().isoformat()
+            devices[device_id]["status"] = "ONLINE"
             
     return jsonify({"success": True})
 
