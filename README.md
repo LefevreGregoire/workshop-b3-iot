@@ -5,7 +5,6 @@
   <img src="https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python" alt="Python">
   <img src="https://img.shields.io/badge/MQTT-Mosquitto-3C5280?style=flat-square&logo=eclipse-mosquitto" alt="MQTT">
   <img src="https://img.shields.io/badge/Flask-Web_Dashboard-000000?style=flat-square&logo=flask" alt="Flask">
-  <img src="https://img.shields.io/badge/SQLite-Persistence-003B57?style=flat-square&logo=sqlite" alt="SQLite">
   <img src="https://img.shields.io/badge/Cryptography-AES--128-red?style=flat-square" alt="AES-128">
 </p>
 
