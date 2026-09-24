@@ -109,7 +109,7 @@ data_lock = threading.Lock()
 
 MQTT_BROKER = os.getenv(
     "MQTT_BROKER",
-    "10.42.0.246"
+    "127.0.0.1"
 )
 
 MQTT_PORT = int(
