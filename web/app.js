@@ -1442,6 +1442,7 @@ function openDeviceDetails(deviceId) {
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         
     let telHtml = `
+        <div><dt>IP Address</dt><dd id="dd-ip">${escapeHTML(device.ip || "Unknown")}</dd></div>
         <div><dt>CPU Usage</dt><dd id="dd-cpu">--%</dd></div>
         <div><dt>Memory</dt><dd id="dd-ram">--%</dd></div>
         <div><dt>Temperature</dt><dd id="dd-temp">--°C</dd></div>
