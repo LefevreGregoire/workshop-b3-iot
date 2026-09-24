@@ -1472,11 +1472,13 @@ function openDeviceDetails(deviceId) {
                 <div><dt>Recorded events</dt><dd>${deviceLogs.length}</dd></div>
             </dl>
             
+            ${device.id === 'SERVER' ? '' : `
             <h3 class="detail-section-title">Remote Override</h3>
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom: 20px;">
                 <button onclick="remoteAction('${device.id}', 'door')" class="modern-btn">Toggle Door Lock</button>
                 <button onclick="remoteAction('${device.id}', 'unban')" class="modern-btn" style="background:#fff; color:#111; border:1px solid #ccc;">Unban IP / Restore Firewall</button>
             </div>
+            `}
             
             <h3 class="detail-section-title">Recent activity</h3>
             ${renderDetailLogList(deviceLogs.slice(0, 5))}
