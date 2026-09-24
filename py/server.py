@@ -1284,6 +1284,16 @@ def server_telemetry_thread():
             }
             with data_lock:
                 telemetry_data["SERVER"] = payload
+                # Inject server into devices list
+                if "SERVER" not in devices:
+                    devices["SERVER"] = {
+                        "id": "SERVER",
+                        "ip": "192.168.50.171",
+                        "status": "ONLINE",
+                        "last_seen": datetime.now().isoformat()
+                    }
+                else:
+                    devices["SERVER"]["last_seen"] = datetime.now().isoformat()
         except Exception: pass
         time.sleep(5)
 
@@ -1317,6 +1327,19 @@ def post_telemetry(device_id):
     with data_lock:
         telemetry_data[device_id] = data
         telemetry_data[device_id]["timestamp"] = datetime.now().isoformat()
+        
+        # Register device dynamically with REAL IP
+        if device_id not in devices:
+            devices[device_id] = {
+                "id": device_id,
+                "ip": request.remote_addr,
+                "status": "ONLINE",
+                "last_seen": datetime.now().isoformat()
+            }
+        else:
+            devices[device_id]["ip"] = request.remote_addr
+            devices[device_id]["last_seen"] = datetime.now().isoformat()
+            
     return jsonify({"success": True})
 
 # ============================================================
