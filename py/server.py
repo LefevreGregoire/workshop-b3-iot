@@ -103,8 +103,8 @@ app = Flask(
 ids = AutomaticIDS()
 
 devices = {
-    "sas-reacteur-01": {
-        "id": "sas-reacteur-01",
+    "sas": {
+        "id": "sas",
         "ip": "192.168.50.24",
         "status": "OFFLINE",
         "last_seen": "Jamais"
@@ -1318,7 +1318,7 @@ def server_telemetry_thread():
 import random
 def get_mock_telemetry():
     return {
-        "sas-reacteur-01": {
+        "sas": {
             "cpu_usage": round(random.uniform(12.0, 45.0), 1),
             "ram_usage": round(random.uniform(40.0, 60.0), 1),
             "temp": round(random.uniform(42.0, 58.0), 1),

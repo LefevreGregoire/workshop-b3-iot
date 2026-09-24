@@ -71,8 +71,8 @@ def mqtt_listener_thread():
 
 # Configuration
 BROKER_IP = "192.168.50.171"
-TOPIC = "cyberspace/capteurs/vessel1"
-DEVICE_NAME = "sas-reacteur-01"
+TOPIC = "cyberspace/capteurs/sas"
+DEVICE_NAME = "sas"
 DEVICE_IP = "192.168.50.24"
 SECRET_CODE = "2080" # Le code valide pour le Niveau 3
 
