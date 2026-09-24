@@ -547,7 +547,8 @@ function applyRoute() {
         devices: page === "dashboard" || page === "devices" || page === "status",
         map: page === "map",
         logs: page === "dashboard" || page === "logs" || page === "events",
-        settings: page === "settings"
+        settings: page === "settings",
+        database: page === "database"
     };
 
     document.querySelector(".stats-grid").hidden = !visible.stats;
@@ -1978,3 +1979,18 @@ const initModernUI = () => {
 };
 
 setTimeout(initModernUI, 1000);
+
+window.fetchDatabase = async function() {
+    try {
+        const res = await fetch("/api/database?t=" + Date.now());
+        const data = await res.json();
+        
+        document.getElementById("db-size").textContent = data.size_bytes + " B";
+        document.getElementById("db-status").textContent = data.status.toUpperCase();
+        
+        document.getElementById("db-json-view").textContent = JSON.stringify(data.collections, null, 4);
+    } catch (e) {
+        document.getElementById("db-status").textContent = "ERROR";
+        document.getElementById("db-json-view").textContent = "Failed to load database: " + e.message;
+    }
+};
