@@ -12,7 +12,7 @@ BROKER = "192.168.50.171"
 PORT = 1883
 TOPIC = "cyberspace/capteurs/salle-serveur"
 
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, "HackedSensor_Debian")
+client = mqtt.Client(client_id="HackedSensor_Debian")
 client.username_pw_set("v-client", "secret_iot_2026")
 client.connect(BROKER, PORT)
 
