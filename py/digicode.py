@@ -100,10 +100,9 @@ def publish_alert(alert):
 def pir_thread():
     try:
         
-import warnings
-warnings.filterwarnings("ignore", module="gpiozero")
-
-from gpiozero import MotionSensor
+        import warnings
+        warnings.filterwarnings("ignore", module="gpiozero")
+        from gpiozero import MotionSensor
         pir = MotionSensor(4)
         while True:
             pir.wait_for_motion()
