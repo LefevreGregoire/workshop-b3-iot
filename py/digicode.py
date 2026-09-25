@@ -19,7 +19,7 @@ SERVER_URL = "http://192.168.50.171:5000"
 
 def get_wifi_signal():
     try:
-        output = subprocess.check_output("iwconfig wlan0 | grep -i quality", shell=True).decode()
+        output = subprocess.check_output("iwconfig wlan0 2>/dev/null | grep -i quality", shell=True).decode()
         if "Signal level" in output: return output.split("Signal level=")[1].split(" ")[0]
     except: pass
     return "-100"
@@ -99,7 +99,11 @@ def publish_alert(alert):
 
 def pir_thread():
     try:
-        from gpiozero import MotionSensor
+        
+import warnings
+warnings.filterwarnings("ignore", module="gpiozero")
+
+from gpiozero import MotionSensor
         pir = MotionSensor(4)
         while True:
             pir.wait_for_motion()
